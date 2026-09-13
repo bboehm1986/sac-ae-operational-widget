@@ -1,0 +1,55 @@
+{
+    "id": "com.porticobenefits.aeoperations",
+    "name": "AE Operations",
+    "version": "1.0.0",
+    "vendor": "Portico Benefits",
+    "license": "",
+    "eula": "",
+    "description": "Working-team dashboard for Annual Enrollment: non-completed status detail (by region), stalled-time buckets, multiple-attempts/recent-completion activity, election-type/HSA breakdowns, and a daily timeline. Split off from AE Snap Report on 2026-09-13.",
+    "newInstancePrefix": "AEOperations",
+    "icon": "https://bboehm1986.github.io/sac-ae-operational-widget/icon.svg",
+    "webcomponents": [
+        {
+            "kind": "main",
+            "tag": "com-porticobenefits-aeoperations",
+            "url": "https://bboehm1986.github.io/sac-ae-operational-widget/main.js",
+            "integrity": "sha384-PLACEHOLDER-RECOMPUTE-BEFORE-PUBLISHING"
+        }
+    ],
+    "properties": {
+        "width": {
+            "type": "integer",
+            "default": 900
+        },
+        "height": {
+            "type": "integer",
+            "default": 700
+        },
+        "asOfLabel": {
+            "type": "string",
+            "default": "Live"
+        }
+    },
+    "dataBindings": {
+        "employerStatus": {
+            "feeds": [
+                {
+                    "id": "dimensions",
+                    "description": "Status / Synod-Region / Election Sub-Type / Date / Year — same shape as AE Snap Report's employerStatus binding (both widgets share AM_EMPLOYER_ENROLLMENT_SUMMARY); Election Sub-Type also carries the 3 new operational row-kinds (Multiple Attempts / Stalled .../Days / Recently Completed)",
+                    "type": "dimension"
+                },
+                {
+                    "id": "measures",
+                    "description": "Employer Count, Employee Count",
+                    "type": "mainStructureMember"
+                }
+            ]
+        }
+    },
+    "methods": {
+        "refresh": {
+            "description": "Re-renders the dashboard from the currently bound data"
+        }
+    },
+    "events": {}
+}
