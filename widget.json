@@ -1,7 +1,7 @@
 {
     "id": "com.porticobenefits.aeoperations",
     "name": "AE Employer Election Operational Dashboard",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "vendor": "Portico Benefits",
     "license": "",
     "eula": "",
@@ -13,7 +13,7 @@
             "kind": "main",
             "tag": "com-porticobenefits-aeoperations",
             "url": "https://bboehm1986.github.io/sac-ae-operational-widget/main.js",
-            "integrity": "sha384-1Lth0L9aA5bhmH+9w0IrU0BfnHEUe9M8s+fSCVejAU99tRdVtGvFeyvZhgcrqCPC"
+            "integrity": "sha384-zgcL8NFfQRz/TstW8ksd8K5mXYvgAhY9yPOJ96GVp2JGwGGkusuEUIvCeRBaFWc8"
         }
     ],
     "properties": {
@@ -35,7 +35,7 @@
             "feeds": [
                 {
                     "id": "dimensions",
-                    "description": "Status / Synod-Region / Election Sub-Type / Date / Year — same shape as AE Snap Report's employerStatus binding (both widgets share AM_EMPLOYER_ENROLLMENT_SUMMARY); Election Sub-Type also carries the 3 new operational row-kinds (Multiple Attempts / Stalled .../Days / Recently Completed)",
+                    "description": "Status / Synod-Region / Election Sub-Type / Date / Year — same shape as AE Snap Report's employerStatus binding (both widgets share AM_EMPLOYER_ENROLLMENT_SUMMARY); Election Sub-Type also carries the 3 operational row-kinds added 2026-09-13 (Multiple Attempts / Stalled .../Days / Recently Completed) plus, added 2026-09-14, the Eligible Employee Band row-kind (20+ / 10-19 / 3-9 / Under 3 / Unknown), which is the only row-kind where Status and Election Sub-Type are both populated together",
                     "type": "dimension"
                 },
                 {

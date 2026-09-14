@@ -10,11 +10,13 @@
     sac-ae-snap-report-widget folder, "Dashboard split", for the full
     reasoning and the combined-cube SQL both widgets share, including the
     3 new row-kinds added specifically for this widget (Multiple Attempts,
-    Stalled-time buckets, Recently Completed).
+    Stalled-time buckets, Recently Completed) and, added 2026-09-14, the
+    Status x Eligible Employee Band row-kind (see "Operational — employer-
+    size focus" in that same doc).
 
     Data binding (declared in widget.json), following SAC's standard
     ResultSet row shape — same shape as the original widget's
-    employerStatus binding, with 3 additional row-kinds this widget reads
+    employerStatus binding, with 4 additional row-kinds this widget reads
     that the Executive widget ignores:
 
       - employerStatus  <- DS_EMPLOYER_ENROLLMENT_SUMMARY /
@@ -22,7 +24,10 @@
             dimensions_0 = Status (Success / Abandoned / Not Started /
                             In Progress / Needs Follow-up / "" for
                             election-type, HSA, operational, or timeline
-                            rows)
+                            rows) — populated ALONGSIDE dimensions_2 only
+                            on the Status x Band row-kind (added
+                            2026-09-14); every other row-kind leaves one
+                            of the two blank.
             dimensions_1 = Synod/Region ("" for non-geography rows)
             dimensions_2 = Election_Category — carries several different
                             "kinds" of value (see dimensions_4 to
@@ -38,6 +43,11 @@
                                 last attempt (added 2026-09-13)
                               - "Recently Completed" — completed in the
                                 last 2 days (added 2026-09-13)
+                              - "20+" / "10-19" / "3-9" / "Under 3" /
+                                "Unknown" — Eligible Employee Band,
+                                paired with a real dimensions_0 Status on
+                                the SAME row (added 2026-09-14; see
+                                BAND_ORDER)
                               - "" for plain status/synod/timeline rows
                             This widget ignores (but safely tolerates) the
                             YoY-only "Eligible Count" row-kind and the 2026
@@ -47,7 +57,7 @@
                             kinds) — Timeline data.
             dimensions_4 = Year — populated only on Health_Plan_Bundle
                             rows; "" on every other row-kind, including all
-                            3 new operational ones.
+                            4 operational-only ones.
             measures_0   = Employer Count
             measures_1   = Employee Count on Status/Synod rows (unused
                             elsewhere in this widget)
@@ -74,6 +84,11 @@
     const DEFAULTED_STATUSES = []; // no real "Defaulted" status value exists yet
     const OPEN_STATUSES = ["Abandoned", "Not Started", "In Progress", "Needs Follow-up"];
     const STALLED_BUCKET_ORDER = ["Stalled 0-7 Days", "Stalled 8-14 Days", "Stalled 15+ Days"];
+    // Eligible Employee Band — mutually-exclusive tiers, confirmed by Blair
+    // 2026-09-14 (not overlapping "3+/10+/20+" flags). "Unknown" covers
+    // employers with no matching row in vEmployerEligibleCount. Largest-first
+    // order, since the size-aware panel is meant to prioritize attention.
+    const BAND_ORDER = ["20+", "10-19", "3-9", "Under 3", "Unknown"];
 
     function row(dims, measures) {
         const out = {};
@@ -129,6 +144,24 @@
         row(["", "", "Stalled 8-14 Days", "", ""], [7]),
         row(["", "", "Stalled 15+ Days", "", ""], [5]),
         row(["", "", "Recently Completed", "", ""], [4]),
+        // Status x Eligible Employee Band — new 2026-09-14. The only
+        // row-kind where BOTH dimensions_0 (Status) and dimensions_2
+        // (Election_Category, here a band) are populated together.
+        row(["Success", "", "20+", "", ""], [5]),
+        row(["Not Started", "", "20+", "", ""], [3]),
+        row(["In Progress", "", "20+", "", ""], [1]),
+        row(["Success", "", "10-19", "", ""], [11]),
+        row(["Not Started", "", "10-19", "", ""], [4]),
+        row(["Abandoned", "", "10-19", "", ""], [2]),
+        row(["Success", "", "3-9", "", ""], [28]),
+        row(["Not Started", "", "3-9", "", ""], [6]),
+        row(["In Progress", "", "3-9", "", ""], [3]),
+        row(["Needs Follow-up", "", "3-9", "", ""], [2]),
+        row(["Success", "", "Under 3", "", ""], [15]),
+        row(["Not Started", "", "Under 3", "", ""], [9]),
+        row(["Abandoned", "", "Under 3", "", ""], [2]),
+        row(["Success", "", "Unknown", "", ""], [2]),
+        row(["Not Started", "", "Unknown", "", ""], [1]),
         // "Eligible Count" — not rendered by this widget (no YoY panel),
         // included here only to confirm the shared parser safely ignores
         // it rather than misrouting it somewhere wrong.
@@ -231,6 +264,9 @@
             .stat-row-top .name { flex: 1 1 auto; font-size: 12.5px; color: var(--text); }
             .stat-row-top .value { flex: none; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
             .stat-row-sub { font-size: 10.5px; color: var(--text-soft); margin: 1px 0 0 15px; font-variant-numeric: tabular-nums; }
+            .progress-track { margin: 4px 0 0 15px; height: 5px; border-radius: 4px; background: var(--surface-2); box-shadow: inset 0 1px 2px rgba(23,26,35,0.10); overflow: hidden; }
+            .progress-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+            .callout { font-size: 12px; color: var(--text-soft); margin: -4px 0 10px; }
 
             /* ---- Cross-tab grid — new 2026-09-13, Non-Completed by Status
                per Synod. A flat breakdown list would mean up to ~9 synods x
@@ -264,6 +300,13 @@
 
             <div class="section-title">Employer Selection</div>
             <div class="grid" id="employerTiles"></div>
+
+            <div class="section-title">Not Yet Completed — By Employer Size</div>
+            <div class="panel-caption" style="margin-top:-4px;">% of employers completed, by eligible employee band (largest first)</div>
+            <div class="callout" id="bandCallout" hidden></div>
+            <div class="panel">
+                <div id="bandBreakdown"></div>
+            </div>
 
             <div class="section-title">Working Queue</div>
             <div class="panels">
@@ -402,6 +445,7 @@
             const byHealthPlan = {};
             const byHsaBucket = {};
             const byStalledBucket = {}; // new 2026-09-13
+            const byBand = {}; // new 2026-09-14 — { total, completed } per Eligible Employee Band
             let totalSetUp = 0, completed = 0, defaulted = 0, open = 0;
             let multipleAttempts = 0, recentlyCompleted = 0; // new 2026-09-13
 
@@ -420,6 +464,16 @@
                 }
 
                 if (subType === "Eligible Count") return; // YoY-only, not rendered by this widget
+
+                // Status x Eligible Employee Band — new 2026-09-14. The only
+                // row-kind where Status AND Election_Category are both
+                // populated at once; every other row-kind leaves one blank.
+                if (status && subType && BAND_ORDER.includes(subType)) {
+                    if (!byBand[subType]) byBand[subType] = { total: 0, completed: 0 };
+                    byBand[subType].total += employerCount;
+                    if (this._statusBucket(status) === "Completed") byBand[subType].completed += employerCount;
+                    return;
+                }
 
                 if (subType && subType.indexOf("HSA ") === 0) {
                     byHsaBucket[subType] = (byHsaBucket[subType] || 0) + employerCount;
@@ -490,7 +544,7 @@
                 totalSetUp, completed, defaulted, open, pctComplete,
                 bySynod, bySynodNames, bySynodStatus, byStatus, daily,
                 byElectionType: byHealthPlan["2027"] || {},
-                byHsaBucket, byStalledBucket,
+                byHsaBucket, byStalledBucket, byBand,
                 multipleAttempts, recentlyCompleted,
             };
         }
@@ -528,6 +582,24 @@
                         <span class="name">${e.name}</span>
                         <span class="value">${e.value}</span>
                     </div>
+                    ${e.sub !== undefined ? `<div class="stat-row-sub">${e.sub}</div>` : ""}
+                </div>`
+            ).join("");
+        }
+
+        // Copied verbatim from the Executive widget — same completion-
+        // progress design (X of Y completed + % bar), reused here for the
+        // Eligible Employee Band panel (new 2026-09-14) instead of Synod.
+        _progressRowsHtml(entries, emptyMessage) {
+            if (!entries.length) return `<div class="empty-row">${emptyMessage}</div>`;
+            return entries.map((e) =>
+                `<div class="stat-row">
+                    <div class="stat-row-top">
+                        <span class="dot"></span>
+                        <span class="name"${e.title ? ` title="${e.title}"` : ""}>${e.name}</span>
+                        <span class="value">${e.value}</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:${Math.max(0, Math.min(100, e.pct))}%"></div></div>
                     ${e.sub !== undefined ? `<div class="stat-row-sub">${e.sub}</div>` : ""}
                 </div>`
             ).join("");
@@ -575,6 +647,31 @@
                 this._tileHtml("Non-Completed", status.open, this._formatPct(pctOpen) + " of total", pctOpen, "warning"),
             ].join("");
             root.getElementById("employerTiles").innerHTML = tilesHtml;
+
+            // Not Yet Completed — By Employer Size — new 2026-09-14.
+            // Largest-band-first, mirroring Executive's Synod progress
+            // panel design. A callout above the panel surfaces the 20+
+            // band's outstanding (non-completed) count specifically, since
+            // that's the literal "still not started" framing Blair used —
+            // shown only when that band exists and has outstanding employers.
+            const bandEntries = BAND_ORDER
+                .filter((b) => status.byBand[b])
+                .map((b) => {
+                    const { total, completed: bandCompleted } = status.byBand[b];
+                    const pct = total ? (bandCompleted / total) * 100 : 0;
+                    return { name: b, value: this._formatPct(pct), pct, sub: `${bandCompleted.toLocaleString()} of ${total.toLocaleString()} completed` };
+                });
+            root.getElementById("bandBreakdown").innerHTML = this._progressRowsHtml(bandEntries, "No Eligible Employee Band data bound yet");
+
+            const topBand = status.byBand["20+"];
+            const topBandOutstanding = topBand ? topBand.total - topBand.completed : 0;
+            const bandCalloutEl = root.getElementById("bandCallout");
+            if (topBand && topBandOutstanding > 0) {
+                bandCalloutEl.textContent = `Needs attention: ${topBandOutstanding.toLocaleString()} employer${topBandOutstanding === 1 ? "" : "s"} with 20+ eligible employees not yet completed`;
+                bandCalloutEl.hidden = false;
+            } else {
+                bandCalloutEl.hidden = true;
+            }
 
             // Non-Completed by status.
             const statusEntries = Object.keys(status.byStatus).map((s) => {
