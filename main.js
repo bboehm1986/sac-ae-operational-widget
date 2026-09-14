@@ -279,12 +279,32 @@
             .crosstab tbody td { font-variant-numeric: tabular-nums; color: var(--text); }
             .crosstab tbody tr:last-child td { border-bottom: none; }
 
-            /* ---- Timeline chart ---- */
-            .chart-grid-line { stroke: rgba(23,26,35,0.08); stroke-width: 1; }
-            .chart-bar-label { font-size: 9px; fill: var(--text-soft); }
-            .chart-bar-value { font-size: 10px; font-weight: 700; fill: var(--text); }
-            .chart-bar { fill: var(--accent); }
-            .chart-bar.peak { fill: var(--success); }
+            /* ---- Timeline heatmap grid — replaced bar chart 2026-09-14,
+               per Blair: a visual grid (one cell per day, color intensity =
+               volume) reads faster than a bar chart for a daily-count
+               series. 5-level color scale, same idea as a GitHub
+               contribution graph. ---- */
+            .timeline-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+            .grid-cell {
+                width: 42px; height: 42px; border-radius: 7px;
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+                border: 1px solid var(--border);
+            }
+            .grid-cell-value { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+            .grid-cell-label { font-size: 8.5px; opacity: 0.75; }
+            .grid-cell.level-0 { background: var(--surface-2); color: var(--text-soft); }
+            .grid-cell.level-1 { background: rgba(106,92,240,0.20); color: var(--text); }
+            .grid-cell.level-2 { background: rgba(106,92,240,0.42); color: var(--text); }
+            .grid-cell.level-3 { background: rgba(106,92,240,0.66); color: #ffffff; }
+            .grid-cell.level-4 { background: rgba(106,92,240,0.92); color: #ffffff; }
+            .grid-cell.peak { outline: 2px solid var(--success); outline-offset: 1px; }
+            .timeline-legend { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-soft); margin-top: 10px; justify-content: flex-end; }
+            .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border); }
+            .legend-swatch.level-0 { background: var(--surface-2); }
+            .legend-swatch.level-1 { background: rgba(106,92,240,0.20); }
+            .legend-swatch.level-2 { background: rgba(106,92,240,0.42); }
+            .legend-swatch.level-3 { background: rgba(106,92,240,0.66); }
+            .legend-swatch.level-4 { background: rgba(106,92,240,0.92); }
         </style>
         <div class="dashboard">
             <div class="topbar">
@@ -350,7 +370,7 @@
             <div class="section-title" id="timelineTitle">Timeline</div>
             <div class="panel-caption" id="timelineCaption">Employers completing Annual Enrollment, by day</div>
             <div class="panel">
-                <svg id="timelineChart" width="100%" height="140" viewBox="0 0 700 140" preserveAspectRatio="none"></svg>
+                <div id="timelineChart"></div>
             </div>
         </div>
     `;
@@ -719,7 +739,7 @@
                 .map((k) => ({ name: HSA_LABELS[k], value: status.byHsaBucket[k] }));
             root.getElementById("hsaBreakdown").innerHTML = this._breakdownRowsHtml(hsaEntries, "No HSA data bound yet");
 
-            // Timeline bar chart.
+            // Timeline heatmap grid.
             this._renderTimeline(root.getElementById("timelineChart"), daily);
             const titleEl = root.getElementById("timelineTitle");
             if (daily.length) {
@@ -730,34 +750,49 @@
             }
         }
 
-        _renderTimeline(svg, daily) {
-            const W = 700, H = 140, padBottom = 20, padTop = 22;
+        // Heatmap grid — replaced the SVG bar chart 2026-09-14. One cell per
+        // day; background color intensity (5-level scale, GitHub-style)
+        // shows relative volume at a glance, while the exact count and date
+        // stay printed on the cell itself — same information as the old
+        // bars, read faster as a grid per Blair.
+        _renderTimeline(container, daily) {
+            if (!daily.length) {
+                container.innerHTML = `<div class="empty-row">No timeline data bound yet</div>`;
+                return;
+            }
             const max = Math.max(1, ...daily.map((d) => d.count));
-            const barW = daily.length ? (W / daily.length) * 0.7 : 0;
-            const gap = daily.length ? (W / daily.length) * 0.3 : 0;
+            const levelFor = (count) => {
+                if (count <= 0) return 0;
+                const ratio = count / max;
+                if (ratio <= 0.25) return 1;
+                if (ratio <= 0.5) return 2;
+                if (ratio <= 0.75) return 3;
+                return 4;
+            };
 
-            let grid = "";
-            [0.25, 0.5, 0.75].forEach((f) => {
-                const y = padTop + (H - padTop - padBottom) * (1 - f);
-                grid += `<line class="chart-grid-line" x1="0" y1="${y}" x2="${W}" y2="${y}"></line>`;
-            });
+            const cells = daily.map((d) => {
+                const [, m, dd] = d.date.split("-");
+                const dayLabel = `${Number(m)}/${Number(dd)}`;
+                const isPeak = d.count === max && d.count > 0;
+                return `
+                    <div class="grid-cell level-${levelFor(d.count)}${isPeak ? " peak" : ""}" title="${dayLabel}: ${d.count}">
+                        <div class="grid-cell-value">${d.count}</div>
+                        <div class="grid-cell-label">${dayLabel}</div>
+                    </div>`;
+            }).join("");
 
-            let bars = "";
-            const peakCount = max;
-            daily.forEach((d, i) => {
-                const x = i * (barW + gap) + gap / 2;
-                const barH = ((H - padTop - padBottom) * d.count) / max;
-                const y = H - padBottom - barH;
-                const dayLabel = d.date.slice(5);
-                const isPeak = d.count === peakCount;
-                bars += `<rect class="chart-bar${isPeak ? " peak" : ""}" x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2"></rect>`;
-                bars += `<text class="chart-bar-value" x="${x + barW / 2}" y="${y - 6}" text-anchor="middle">${d.count}</text>`;
-                bars += `<text class="chart-bar-label" x="${x + barW / 2}" y="${H - 6}" text-anchor="middle">${dayLabel}</text>`;
-            });
+            const legend = `
+                <div class="timeline-legend">
+                    <span>Fewer</span>
+                    <span class="legend-swatch level-0"></span>
+                    <span class="legend-swatch level-1"></span>
+                    <span class="legend-swatch level-2"></span>
+                    <span class="legend-swatch level-3"></span>
+                    <span class="legend-swatch level-4"></span>
+                    <span>More</span>
+                </div>`;
 
-            svg.innerHTML = daily.length
-                ? (grid + bars)
-                : `<text x="10" y="20" class="chart-bar-label">No timeline data bound yet</text>`;
+            container.innerHTML = `<div class="timeline-grid">${cells}</div>${legend}`;
         }
     }
 
