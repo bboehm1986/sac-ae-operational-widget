@@ -318,7 +318,7 @@
             this._shadowRoot = this.attachShadow({ mode: "open" });
             this._shadowRoot.appendChild(template.content.cloneNode(true));
 
-            this._props = { width: 900, height: 700, asOfLabel: "Live" };
+            this._props = { width: 900, height: 700, asOfLabel: "" };
             this._employerStatus = MOCK_EMPLOYER_STATUS;
             this._usingMockData = true;
         }
@@ -552,8 +552,17 @@
             const status = this._parseEmployerStatus();
             const daily = status.daily;
 
-            root.getElementById("asof").textContent = "As of: " + (this._props.asOfLabel || "Live");
-            root.getElementById("dataBadge").textContent = this._usingMockData ? "Mock Data — Preview" : "Live";
+            // "Live" language dropped 2026-09-14, per Blair — unhelpful on
+            // this dashboard. The badge now only ever warns about mock/
+            // preview data; it doesn't render once real data is bound,
+            // rather than announcing "Live".
+            const asOfLabel = this._props.asOfLabel || "";
+            const asOfEl = root.getElementById("asof");
+            asOfEl.textContent = asOfLabel ? "As of: " + asOfLabel : "";
+            asOfEl.hidden = !asOfLabel;
+            const dataBadgeEl = root.getElementById("dataBadge");
+            dataBadgeEl.textContent = "Mock Data — Preview";
+            dataBadgeEl.hidden = !this._usingMockData;
 
             // Trimmed to 3 tiles, per the Executive/Operational split —
             // % Complete and a scorecard-style Defaulted tile read more like
