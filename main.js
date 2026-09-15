@@ -123,18 +123,14 @@
         row(["", "", "Select Copay", "", "2027"], [31]),
         row(["", "", "Value HDHP", "", "2027"], [22]),
         row(["", "", "Select HDHP", "", "2027"], [12]),
-        row(["", "", "Value Copay", "", "2026"], [35]),
-        row(["", "", "Select Copay", "", "2026"], [29]),
-        row(["", "", "Value HDHP", "", "2026"], [28]),
-        row(["", "", "Select HDHP", "", "2026"], [9]),
         // HSA collapsed 2-bucket-per-type scheme.
         row(["", "", "HSA Annual - Elected 0", "", ""], [66]),
         row(["", "", "HSA Annual - Elected >0", "", ""], [47]),
         row(["", "", "HSA One Time - Elected 0", "", ""], [98]),
         row(["", "", "HSA One Time - Elected >0", "", ""], [15]),
-        // Timeline — rescaled 2026-09-16 to stay under the mock's own
-        // totals (2027: 143, 2026: 101) once the Cumulative Tally Tracker
-        // needed real percentages, same rescale Snap Report's mock got.
+        // Timeline — 2027-only since 2026-09-16 (the 2026 series and its
+        // supporting mock bucket rows above were removed — see BUILD_PLAN
+        // doc, "Reversal: 2026 day-by-day Timeline data is not usable").
         row(["", "", "", "2026-10-01", "2027"], [5]),
         row(["", "", "", "2026-10-02", "2027"], [9]),
         row(["", "", "", "2026-10-03", "2027"], [7]),
@@ -149,20 +145,6 @@
         row(["", "", "", "2026-10-12", "2027"], [1]),
         row(["", "", "", "2026-10-13", "2027"], [12]),
         row(["", "", "", "2026-10-14", "2027"], [16]),
-        row(["", "", "", "2025-10-01", "2026"], [3]),
-        row(["", "", "", "2025-10-02", "2026"], [5]),
-        row(["", "", "", "2025-10-03", "2026"], [7]),
-        row(["", "", "", "2025-10-04", "2026"], [4]),
-        row(["", "", "", "2025-10-05", "2026"], [2]),
-        row(["", "", "", "2025-10-06", "2026"], [6]),
-        row(["", "", "", "2025-10-07", "2026"], [8]),
-        row(["", "", "", "2025-10-08", "2026"], [11]),
-        row(["", "", "", "2025-10-09", "2026"], [5]),
-        row(["", "", "", "2025-10-10", "2026"], [3]),
-        row(["", "", "", "2025-10-11", "2026"], [1]),
-        row(["", "", "", "2025-10-12", "2026"], [0]),
-        row(["", "", "", "2025-10-13", "2026"], [7]),
-        row(["", "", "", "2025-10-14", "2026"], [9]),
         // New operational-only row-kinds, added 2026-09-13.
         row(["", "", "Multiple Attempts", "", ""], [9]),
         row(["", "", "Stalled 0-3 Days", "", ""], [12]),
@@ -304,25 +286,19 @@
             .crosstab tbody td { font-variant-numeric: tabular-nums; color: var(--text); }
             .crosstab tbody tr:last-child td { border-bottom: none; }
 
-            /* ---- Timeline — day-by-day table + cumulative pace tracker,
-               replaced the heatmap grid 2026-09-16, per Blair — same
-               redesign Snap Report's Timeline got the day before, ported
-               here verbatim. Also fixes a latent bug: this widget's
-               Timeline previously had no year-separation at all (Enrollment_
-               Year was never read on Timeline rows here), so once the
-               shared cube grew a 2026-tagged Timeline block for Snap
-               Report's YoY comparison, this widget would have started
-               silently mixing both plan years' dates into one series. ---- */
+            /* ---- Timeline — day-by-day table + cumulative tracker.
+               Reworked 2026-09-16, per Blair: ACTDATE can't support genuine
+               day-by-day association for 2026 data (unreliable/sparse), so
+               the 2026 series was removed entirely — 2027-only now. The
+               On Track/Watch/Act status is also gone; it compared against
+               the same unreliable 2026 numerator. The fixed, zero-filled
+               10/1-10/14 window design stays. ---- */
             .cum-tracker { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
             .cum-tracker-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-soft); margin-bottom: 10px; }
             .cum-tracker-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
             .cum-stat { display: flex; flex-direction: column; gap: 2px; }
             .cum-stat-label { font-size: 10px; color: var(--text-soft); white-space: nowrap; }
             .cum-stat-value { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-            .cum-status { margin-left: auto; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 100px; white-space: nowrap; }
-            .cum-status.on-track { color: var(--success); background: var(--success-bg); }
-            .cum-status.watch { color: var(--warning); background: var(--warning-bg); }
-            .cum-status.act { color: var(--danger); background: var(--danger-bg); }
 
             .timeline-table-wrap { overflow-x: auto; }
             .timeline-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
@@ -521,11 +497,11 @@
             const bySynodNames = {};
             const bySynodStatus = {}; // groupKey -> { status -> count } — new 2026-09-13 cross-tab
             const byStatus = {};
-            const rawDatesByYear = { "2027": {}, "2026": {} }; // rebuilt 2026-09-16 (was byDate,
-                                    // no year separation at all) — keyed by plan-year tag, then
-                                    // full "YYYY-MM-DD", so _fixedWindowCounts() can anchor each
-                                    // year to its own real calendar year and clip/zero-fill to the
-                                    // fixed 10/1-10/14 AE window. Ported from sac-ae-snap-report-widget.
+            const rawDates = {}; // simplified back to single-series 2026-09-16 (was rawDatesByYear) —
+                                    // the 2026 side was removed entirely, see BUILD_PLAN_VWEMPLOYERSAVES.md,
+                                    // "Reversal: 2026 day-by-day Timeline data is not usable". Keyed by
+                                    // full "YYYY-MM-DD" so _fixedWindowCounts() can anchor to the real
+                                    // calendar year and clip/zero-fill to the fixed 10/1-10/14 AE window.
             const byHealthPlan = {};
             const byHsaBucket = {};
             const byStalledBucket = {}; // new 2026-09-13
@@ -542,12 +518,12 @@
                 const employerCount = this._measure(r, 0);
 
                 if (date) {
+                    // Defensive: skip any date row not tagged 2027 (or
+                    // untagged) — in case a not-yet-redeployed cube still
+                    // emits the retired 2026 Timeline block mid-rollout.
+                    if (year && year !== "2027") return;
                     const iso = this._normalizeDateKey(date);
-                    // Defaults to 2027 for safety if an older, un-tagged
-                    // cube deploy is still live.
-                    const y = year || "2027";
-                    if (!rawDatesByYear[y]) rawDatesByYear[y] = {};
-                    rawDatesByYear[y][iso] = (rawDatesByYear[y][iso] || 0) + employerCount;
+                    rawDates[iso] = (rawDates[iso] || 0) + employerCount;
                     return;
                 }
 
@@ -630,20 +606,18 @@
             // Fixed, zero-filled 10/1-10/14 window — always exactly 14
             // entries, in order, regardless of which days actually had
             // completions or whether any stray out-of-window dates showed
-            // up in the bound data.
-            const fixed2027 = this._fixedWindowCounts(rawDatesByYear["2027"] || {});
-            const fixed2026 = this._fixedWindowCounts(rawDatesByYear["2026"] || {});
+            // up in the bound data. 2027-only since 2026-09-16.
+            const fixed = this._fixedWindowCounts(rawDates);
             const daily = [];
             for (let i = 0; i < this.constructor.AE_WINDOW_LENGTH_DAYS; i++) {
                 const dd = String(this.constructor.AE_WINDOW_START_DAY + i).padStart(2, "0");
                 const mmdd = `${this.constructor.AE_WINDOW_MONTH}-${dd}`;
-                daily.push({ mmdd, y2026: fixed2026[mmdd] || 0, y2027: fixed2027[mmdd] || 0 });
+                daily.push({ mmdd, count: fixed[mmdd] || 0 });
             }
             return {
                 totalSetUp, completed, defaulted, open, pctComplete,
                 bySynod, bySynodNames, bySynodStatus, byStatus, daily,
                 byElectionType: byHealthPlan["2027"] || {},
-                byHealthPlan, // added 2026-09-16 — Timeline's 2026 total denominator needs the raw object, not just the 2027-filtered byElectionType
                 byHsaBucket, byStalledBucket, byBand,
                 multipleAttempts, recentlyCompleted,
             };
@@ -827,14 +801,11 @@
                 .map((k) => ({ name: HSA_LABELS[k], value: status.byHsaBucket[k] }));
             root.getElementById("hsaBreakdown").innerHTML = this._breakdownRowsHtml(hsaEntries, "No HSA data bound yet");
 
-            // Timeline — day-by-day table + cumulative pace tracker.
-            // 2026's total comes from summing the Bucket row-kind's
-            // per-employer counts (already in byHealthPlan["2026"]) rather
-            // than a new cube measure, since it's already fully available —
-            // same approach as Snap Report's version.
+            // Timeline — day-by-day table + cumulative tracker, 2027-only
+            // since 2026-09-16 (ACTDATE can't support day-by-day for 2026 —
+            // see BUILD_PLAN doc).
             const total2027 = status.totalSetUp;
-            const total2026 = Object.values(status.byHealthPlan["2026"] || {}).reduce((a, b) => a + b, 0);
-            this._renderTimeline(root.getElementById("timelineChart"), daily, total2027, total2026);
+            this._renderTimeline(root.getElementById("timelineChart"), daily, total2027);
 
             const titleEl = root.getElementById("timelineTitle");
             if (daily.length) {
@@ -845,42 +816,28 @@
             }
         }
 
-        // Compares this year's cumulative completion rate to last year's at
-        // the same point in the election window and returns a pace status.
-        // Ported verbatim from sac-ae-snap-report-widget.
-        _paceStatus(deltaPct) {
-            if (deltaPct >= 0) return { label: "On Track", cls: "on-track" };
-            if (deltaPct >= -5) return { label: "Watch", cls: "watch" };
-            return { label: "Act", cls: "act" };
-        }
-
-        // Day-by-day table + leading cumulative pace tracker — replaced the
-        // heatmap grid 2026-09-16, per Blair, same redesign Snap Report's
-        // Timeline got. Day-by-day rows show each year's own per-day % of
-        // that year's total (not cumulative); the Cumulative Tally Tracker
-        // above the table is the only place a running total appears.
-        _renderTimeline(container, daily, total2027, total2026) {
+        // Day-by-day table + leading cumulative tracker — reworked
+        // 2026-09-16 to drop the 2026 series entirely (see BUILD_PLAN doc,
+        // "Reversal: 2026 day-by-day Timeline data is not usable"). Kept:
+        // the fixed 10/1-10/14 window design, and Count/% Completed 2027.
+        _renderTimeline(container, daily, total2027) {
             if (!daily.length) {
                 container.innerHTML = `<div class="empty-row">No timeline data bound yet</div>`;
                 return;
             }
 
-            let cum2027 = 0, cum2026 = 0;
+            let cum2027 = 0;
             const rows = daily.map((d, i) => {
-                cum2027 += d.y2027;
-                cum2026 += d.y2026;
+                cum2027 += d.count;
                 return {
                     dayLabel: `AE Day ${i + 1}`,
                     mmdd: d.mmdd,
-                    count2027: d.y2027,
-                    pct2027: total2027 ? (d.y2027 / total2027) * 100 : 0,
-                    pct2026: total2026 ? (d.y2026 / total2026) * 100 : 0,
+                    count2027: d.count,
+                    pct2027: total2027 ? (d.count / total2027) * 100 : 0,
                 };
             });
 
             const cumPct2027 = total2027 ? (cum2027 / total2027) * 100 : 0;
-            const cumPct2026 = total2026 ? (cum2026 / total2026) * 100 : 0;
-            const pace = this._paceStatus(cumPct2027 - cumPct2026);
 
             const tracker = `
                 <div class="cum-tracker">
@@ -894,11 +851,6 @@
                             <div class="cum-stat-label">% Completed 2027</div>
                             <div class="cum-stat-value">${this._formatPct(cumPct2027)}</div>
                         </div>
-                        <div class="cum-stat">
-                            <div class="cum-stat-label">% Completed 2026</div>
-                            <div class="cum-stat-value">${this._formatPct(cumPct2026)}</div>
-                        </div>
-                        <div class="cum-status ${pace.cls}">${pace.label}</div>
                     </div>
                 </div>`;
 
@@ -907,14 +859,13 @@
                     <td>${r.dayLabel}</td>
                     <td>${r.count2027.toLocaleString()}</td>
                     <td>${this._formatPct(r.pct2027)}</td>
-                    <td>${this._formatPct(r.pct2026)}</td>
                 </tr>`).join("");
 
             const table = `
                 <div class="timeline-table-wrap">
                     <table class="timeline-table">
                         <thead>
-                            <tr><th>Day</th><th>Count Completed 2027</th><th>% Completed 2027</th><th>% Completed 2026</th></tr>
+                            <tr><th>Day</th><th>Count Completed 2027</th><th>% Completed 2027</th></tr>
                         </thead>
                         <tbody>${tableRows}</tbody>
                     </table>
