@@ -725,13 +725,21 @@
             const daily = status.daily;
 
             // "Live" language dropped 2026-09-14, per Blair — unhelpful on
-            // this dashboard. The badge now only ever warns about mock/
-            // preview data; it doesn't render once real data is bound,
-            // rather than announcing "Live".
-            const asOfLabel = this._props.asOfLabel || "";
+            // this dashboard.
+            // Changed 2026-09-16, also per Blair: "As of" was showing the
+            // literal word "Live" (whatever the Story's asOfLabel property
+            // happened to be set to) instead of an actual date/time. Now
+            // computed by the widget itself from the viewer's own clock —
+            // date AND time here (unlike Snap Report's date-only version),
+            // since this is the working-team/operational dashboard, checked
+            // throughout the day. Safe to use new Date() with no arguments
+            // (just "what time is it right now") — different from, and not
+            // subject to, the date-STRING-parsing timezone risk documented
+            // elsewhere in this file for Timeline labels. The asOfLabel
+            // property is no longer read.
             const asOfEl = root.getElementById("asof");
-            asOfEl.textContent = asOfLabel ? "As of: " + asOfLabel : "";
-            asOfEl.hidden = !asOfLabel;
+            asOfEl.textContent = "As of: " + new Date().toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+            asOfEl.hidden = false;
             const dataBadgeEl = root.getElementById("dataBadge");
             dataBadgeEl.textContent = "Mock Data — Preview";
             dataBadgeEl.hidden = !this._usingMockData;
