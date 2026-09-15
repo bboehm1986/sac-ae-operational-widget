@@ -37,10 +37,14 @@
                               - "Multiple Attempts" — employers whose
                                 vEmployerSaves has more than one attempt
                                 row (added 2026-09-13)
-                              - "Stalled 0-7 Days" / "Stalled 8-14 Days" /
-                                "Stalled 15+ Days" — non-completed
+                              - "Stalled 0-3 Days" / "Stalled 4-7 Days" /
+                                "Stalled 8+ Days" — non-completed
                                 employers bucketed by days since their
-                                last attempt (added 2026-09-13)
+                                last attempt (added 2026-09-13, rescaled
+                                2026-09-16 — the original 0-7/8-14/15+
+                                scheme barely differentiated anything
+                                within the real ~14-day AE window, since
+                                "15+" is nearly unreachable inside it)
                               - "Recently Completed" — completed in the
                                 last 2 days (added 2026-09-13)
                               - "20+" / "10-19" / "3-9" / "Under 3" /
@@ -83,7 +87,7 @@
     const COMPLETED_STATUSES = ["Success"];
     const DEFAULTED_STATUSES = []; // no real "Defaulted" status value exists yet
     const OPEN_STATUSES = ["Abandoned", "Not Started", "In Progress", "Needs Follow-up"];
-    const STALLED_BUCKET_ORDER = ["Stalled 0-7 Days", "Stalled 8-14 Days", "Stalled 15+ Days"];
+    const STALLED_BUCKET_ORDER = ["Stalled 0-3 Days", "Stalled 4-7 Days", "Stalled 8+ Days"];
     // Eligible Employee Band — mutually-exclusive tiers, confirmed by Blair
     // 2026-09-14 (not overlapping "3+/10+/20+" flags). "Unknown" covers
     // employers with no matching row in vEmployerEligibleCount. Largest-first
@@ -112,37 +116,58 @@
         row(["Not Started", "Southeastern Synod", "", "", ""], [4, 20]),
         row(["In Progress", "Southeastern Synod", "", "", ""], [3, 13]),
         row(["Abandoned", "Southeastern Synod", "", "", ""], [1, 4]),
-        // Health-plan bucket breakdown — only the 2027 side is used here
-        // (Election Type panel); this widget has no YoY panel.
+        // Health-plan bucket breakdown — 2027 drives the Election Type
+        // panel; 2026 added 2026-09-16 as the Timeline's % denominator
+        // (this widget has no YoY panel to show it in directly).
         row(["", "", "Value Copay", "", "2027"], [42]),
         row(["", "", "Select Copay", "", "2027"], [31]),
         row(["", "", "Value HDHP", "", "2027"], [22]),
         row(["", "", "Select HDHP", "", "2027"], [12]),
+        row(["", "", "Value Copay", "", "2026"], [35]),
+        row(["", "", "Select Copay", "", "2026"], [29]),
+        row(["", "", "Value HDHP", "", "2026"], [28]),
+        row(["", "", "Select HDHP", "", "2026"], [9]),
         // HSA collapsed 2-bucket-per-type scheme.
         row(["", "", "HSA Annual - Elected 0", "", ""], [66]),
         row(["", "", "HSA Annual - Elected >0", "", ""], [47]),
         row(["", "", "HSA One Time - Elected 0", "", ""], [98]),
         row(["", "", "HSA One Time - Elected >0", "", ""], [15]),
-        // Timeline.
-        row(["", "", "", "2026-10-01", ""], [14]),
-        row(["", "", "", "2026-10-02", ""], [22]),
-        row(["", "", "", "2026-10-03", ""], [19]),
-        row(["", "", "", "2026-10-04", ""], [8]),
-        row(["", "", "", "2026-10-05", ""], [3]),
-        row(["", "", "", "2026-10-06", ""], [27]),
-        row(["", "", "", "2026-10-07", ""], [31]),
-        row(["", "", "", "2026-10-08", ""], [25]),
-        row(["", "", "", "2026-10-09", ""], [18]),
-        row(["", "", "", "2026-10-10", ""], [12]),
-        row(["", "", "", "2026-10-11", ""], [4]),
-        row(["", "", "", "2026-10-12", ""], [2]),
-        row(["", "", "", "2026-10-13", ""], [30]),
-        row(["", "", "", "2026-10-14", ""], [41]),
+        // Timeline — rescaled 2026-09-16 to stay under the mock's own
+        // totals (2027: 143, 2026: 101) once the Cumulative Tally Tracker
+        // needed real percentages, same rescale Snap Report's mock got.
+        row(["", "", "", "2026-10-01", "2027"], [5]),
+        row(["", "", "", "2026-10-02", "2027"], [9]),
+        row(["", "", "", "2026-10-03", "2027"], [7]),
+        row(["", "", "", "2026-10-04", "2027"], [3]),
+        row(["", "", "", "2026-10-05", "2027"], [1]),
+        row(["", "", "", "2026-10-06", "2027"], [11]),
+        row(["", "", "", "2026-10-07", "2027"], [12]),
+        row(["", "", "", "2026-10-08", "2027"], [10]),
+        row(["", "", "", "2026-10-09", "2027"], [7]),
+        row(["", "", "", "2026-10-10", "2027"], [5]),
+        row(["", "", "", "2026-10-11", "2027"], [2]),
+        row(["", "", "", "2026-10-12", "2027"], [1]),
+        row(["", "", "", "2026-10-13", "2027"], [12]),
+        row(["", "", "", "2026-10-14", "2027"], [16]),
+        row(["", "", "", "2025-10-01", "2026"], [3]),
+        row(["", "", "", "2025-10-02", "2026"], [5]),
+        row(["", "", "", "2025-10-03", "2026"], [7]),
+        row(["", "", "", "2025-10-04", "2026"], [4]),
+        row(["", "", "", "2025-10-05", "2026"], [2]),
+        row(["", "", "", "2025-10-06", "2026"], [6]),
+        row(["", "", "", "2025-10-07", "2026"], [8]),
+        row(["", "", "", "2025-10-08", "2026"], [11]),
+        row(["", "", "", "2025-10-09", "2026"], [5]),
+        row(["", "", "", "2025-10-10", "2026"], [3]),
+        row(["", "", "", "2025-10-11", "2026"], [1]),
+        row(["", "", "", "2025-10-12", "2026"], [0]),
+        row(["", "", "", "2025-10-13", "2026"], [7]),
+        row(["", "", "", "2025-10-14", "2026"], [9]),
         // New operational-only row-kinds, added 2026-09-13.
         row(["", "", "Multiple Attempts", "", ""], [9]),
-        row(["", "", "Stalled 0-7 Days", "", ""], [12]),
-        row(["", "", "Stalled 8-14 Days", "", ""], [7]),
-        row(["", "", "Stalled 15+ Days", "", ""], [5]),
+        row(["", "", "Stalled 0-3 Days", "", ""], [12]),
+        row(["", "", "Stalled 4-7 Days", "", ""], [7]),
+        row(["", "", "Stalled 8+ Days", "", ""], [5]),
         row(["", "", "Recently Completed", "", ""], [4]),
         // Status x Eligible Employee Band — new 2026-09-14. The only
         // row-kind where BOTH dimensions_0 (Status) and dimensions_2
@@ -279,32 +304,33 @@
             .crosstab tbody td { font-variant-numeric: tabular-nums; color: var(--text); }
             .crosstab tbody tr:last-child td { border-bottom: none; }
 
-            /* ---- Timeline heatmap grid — replaced bar chart 2026-09-14,
-               per Blair: a visual grid (one cell per day, color intensity =
-               volume) reads faster than a bar chart for a daily-count
-               series. 5-level color scale, same idea as a GitHub
-               contribution graph. ---- */
-            .timeline-grid { display: flex; flex-wrap: wrap; gap: 5px; }
-            .grid-cell {
-                width: 42px; height: 42px; border-radius: 7px;
-                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-                border: 1px solid var(--border);
-            }
-            .grid-cell-value { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-            .grid-cell-label { font-size: 8.5px; opacity: 0.75; }
-            .grid-cell.level-0 { background: var(--surface-2); color: var(--text-soft); }
-            .grid-cell.level-1 { background: rgba(106,92,240,0.20); color: var(--text); }
-            .grid-cell.level-2 { background: rgba(106,92,240,0.42); color: var(--text); }
-            .grid-cell.level-3 { background: rgba(106,92,240,0.66); color: #ffffff; }
-            .grid-cell.level-4 { background: rgba(106,92,240,0.92); color: #ffffff; }
-            .grid-cell.peak { outline: 2px solid var(--success); outline-offset: 1px; }
-            .timeline-legend { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-soft); margin-top: 10px; justify-content: flex-end; }
-            .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border); }
-            .legend-swatch.level-0 { background: var(--surface-2); }
-            .legend-swatch.level-1 { background: rgba(106,92,240,0.20); }
-            .legend-swatch.level-2 { background: rgba(106,92,240,0.42); }
-            .legend-swatch.level-3 { background: rgba(106,92,240,0.66); }
-            .legend-swatch.level-4 { background: rgba(106,92,240,0.92); }
+            /* ---- Timeline — day-by-day table + cumulative pace tracker,
+               replaced the heatmap grid 2026-09-16, per Blair — same
+               redesign Snap Report's Timeline got the day before, ported
+               here verbatim. Also fixes a latent bug: this widget's
+               Timeline previously had no year-separation at all (Enrollment_
+               Year was never read on Timeline rows here), so once the
+               shared cube grew a 2026-tagged Timeline block for Snap
+               Report's YoY comparison, this widget would have started
+               silently mixing both plan years' dates into one series. ---- */
+            .cum-tracker { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+            .cum-tracker-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-soft); margin-bottom: 10px; }
+            .cum-tracker-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+            .cum-stat { display: flex; flex-direction: column; gap: 2px; }
+            .cum-stat-label { font-size: 10px; color: var(--text-soft); white-space: nowrap; }
+            .cum-stat-value { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+            .cum-status { margin-left: auto; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 100px; white-space: nowrap; }
+            .cum-status.on-track { color: var(--success); background: var(--success-bg); }
+            .cum-status.watch { color: var(--warning); background: var(--warning-bg); }
+            .cum-status.act { color: var(--danger); background: var(--danger-bg); }
+
+            .timeline-table-wrap { overflow-x: auto; }
+            .timeline-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+            .timeline-table th, .timeline-table td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+            .timeline-table th:first-child, .timeline-table td:first-child { text-align: left; }
+            .timeline-table thead th { color: var(--text-soft); font-weight: 600; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.03em; }
+            .timeline-table tbody td { font-variant-numeric: tabular-nums; color: var(--text); }
+            .timeline-table tbody tr:last-child td { border-bottom: none; }
         </style>
         <div class="dashboard">
             <div class="topbar">
@@ -368,7 +394,7 @@
             </div>
 
             <div class="section-title" id="timelineTitle">Timeline</div>
-            <div class="panel-caption" id="timelineCaption">Employers completing Annual Enrollment, by day</div>
+            <div class="panel-caption" id="timelineCaption">Day-by-day completions and cumulative pace vs. 2026</div>
             <div class="panel">
                 <div id="timelineChart"></div>
             </div>
@@ -444,6 +470,40 @@
             return raw;
         }
 
+        // Fixed AE election window — confirmed by Blair, 2026-09-15/16:
+        // Annual Enrollment always runs 10/1 through 10/14, every plan
+        // year. Ported verbatim from sac-ae-snap-report-widget — see
+        // BUILD_PLAN_VWEMPLOYERSAVES.md, "Timeline fixed to the real
+        // 10/1-10/14 AE window", for the full rationale.
+        static get AE_WINDOW_MONTH() { return "10"; }
+        static get AE_WINDOW_START_DAY() { return 1; }
+        static get AE_WINDOW_LENGTH_DAYS() { return 14; }
+
+        _anchorYear(isoDates) {
+            const counts = {};
+            Object.keys(isoDates).forEach((iso) => {
+                const y = iso.slice(0, 4);
+                counts[y] = (counts[y] || 0) + 1;
+            });
+            let best = null, bestCount = -1;
+            Object.keys(counts).forEach((y) => {
+                if (counts[y] > bestCount) { best = y; bestCount = counts[y]; }
+            });
+            return best;
+        }
+
+        _fixedWindowCounts(isoDates) {
+            const anchorYear = this._anchorYear(isoDates);
+            const out = {};
+            for (let i = 0; i < this.constructor.AE_WINDOW_LENGTH_DAYS; i++) {
+                const dd = String(this.constructor.AE_WINDOW_START_DAY + i).padStart(2, "0");
+                const mmdd = `${this.constructor.AE_WINDOW_MONTH}-${dd}`;
+                const iso = anchorYear ? `${anchorYear}-${mmdd}` : null;
+                out[mmdd] = (iso && isoDates[iso]) || 0;
+            }
+            return out;
+        }
+
         _synodGroupKey(name) {
             const m = /^(\d+)/.exec(name);
             return m ? m[1] : name;
@@ -461,7 +521,11 @@
             const bySynodNames = {};
             const bySynodStatus = {}; // groupKey -> { status -> count } — new 2026-09-13 cross-tab
             const byStatus = {};
-            const byDate = {};
+            const rawDatesByYear = { "2027": {}, "2026": {} }; // rebuilt 2026-09-16 (was byDate,
+                                    // no year separation at all) — keyed by plan-year tag, then
+                                    // full "YYYY-MM-DD", so _fixedWindowCounts() can anchor each
+                                    // year to its own real calendar year and clip/zero-fill to the
+                                    // fixed 10/1-10/14 AE window. Ported from sac-ae-snap-report-widget.
             const byHealthPlan = {};
             const byHsaBucket = {};
             const byStalledBucket = {}; // new 2026-09-13
@@ -478,8 +542,12 @@
                 const employerCount = this._measure(r, 0);
 
                 if (date) {
-                    const dateKey = this._normalizeDateKey(date);
-                    byDate[dateKey] = (byDate[dateKey] || 0) + employerCount;
+                    const iso = this._normalizeDateKey(date);
+                    // Defaults to 2027 for safety if an older, un-tagged
+                    // cube deploy is still live.
+                    const y = year || "2027";
+                    if (!rawDatesByYear[y]) rawDatesByYear[y] = {};
+                    rawDatesByYear[y][iso] = (rawDatesByYear[y][iso] || 0) + employerCount;
                     return;
                 }
 
@@ -559,11 +627,23 @@
             });
 
             const pctComplete = totalSetUp ? (completed / totalSetUp) * 100 : 0;
-            const daily = Object.keys(byDate).sort().map((d) => ({ date: d, count: byDate[d] }));
+            // Fixed, zero-filled 10/1-10/14 window — always exactly 14
+            // entries, in order, regardless of which days actually had
+            // completions or whether any stray out-of-window dates showed
+            // up in the bound data.
+            const fixed2027 = this._fixedWindowCounts(rawDatesByYear["2027"] || {});
+            const fixed2026 = this._fixedWindowCounts(rawDatesByYear["2026"] || {});
+            const daily = [];
+            for (let i = 0; i < this.constructor.AE_WINDOW_LENGTH_DAYS; i++) {
+                const dd = String(this.constructor.AE_WINDOW_START_DAY + i).padStart(2, "0");
+                const mmdd = `${this.constructor.AE_WINDOW_MONTH}-${dd}`;
+                daily.push({ mmdd, y2026: fixed2026[mmdd] || 0, y2027: fixed2027[mmdd] || 0 });
+            }
             return {
                 totalSetUp, completed, defaulted, open, pctComplete,
                 bySynod, bySynodNames, bySynodStatus, byStatus, daily,
                 byElectionType: byHealthPlan["2027"] || {},
+                byHealthPlan, // added 2026-09-16 — Timeline's 2026 total denominator needs the raw object, not just the 2027-filtered byElectionType
                 byHsaBucket, byStalledBucket, byBand,
                 multipleAttempts, recentlyCompleted,
             };
@@ -739,60 +819,100 @@
                 .map((k) => ({ name: HSA_LABELS[k], value: status.byHsaBucket[k] }));
             root.getElementById("hsaBreakdown").innerHTML = this._breakdownRowsHtml(hsaEntries, "No HSA data bound yet");
 
-            // Timeline heatmap grid.
-            this._renderTimeline(root.getElementById("timelineChart"), daily);
+            // Timeline — day-by-day table + cumulative pace tracker.
+            // 2026's total comes from summing the Bucket row-kind's
+            // per-employer counts (already in byHealthPlan["2026"]) rather
+            // than a new cube measure, since it's already fully available —
+            // same approach as Snap Report's version.
+            const total2027 = status.totalSetUp;
+            const total2026 = Object.values(status.byHealthPlan["2026"] || {}).reduce((a, b) => a + b, 0);
+            this._renderTimeline(root.getElementById("timelineChart"), daily, total2027, total2026);
+
             const titleEl = root.getElementById("timelineTitle");
             if (daily.length) {
-                const fmt = (iso) => { const [, m, d] = iso.split("-"); return `${Number(m)}/${Number(d)}`; };
-                titleEl.textContent = `Timeline (${fmt(daily[0].date)} – ${fmt(daily[daily.length - 1].date)})`;
+                const fmt = (mmdd) => { const [m, d] = mmdd.split("-"); return `${Number(m)}/${Number(d)}`; };
+                titleEl.textContent = `Timeline (${fmt(daily[0].mmdd)} – ${fmt(daily[daily.length - 1].mmdd)})`;
             } else {
                 titleEl.textContent = "Timeline";
             }
         }
 
-        // Heatmap grid — replaced the SVG bar chart 2026-09-14. One cell per
-        // day; background color intensity (5-level scale, GitHub-style)
-        // shows relative volume at a glance, while the exact count and date
-        // stay printed on the cell itself — same information as the old
-        // bars, read faster as a grid per Blair.
-        _renderTimeline(container, daily) {
+        // Compares this year's cumulative completion rate to last year's at
+        // the same point in the election window and returns a pace status.
+        // Ported verbatim from sac-ae-snap-report-widget.
+        _paceStatus(deltaPct) {
+            if (deltaPct >= 0) return { label: "On Track", cls: "on-track" };
+            if (deltaPct >= -5) return { label: "Watch", cls: "watch" };
+            return { label: "Act", cls: "act" };
+        }
+
+        // Day-by-day table + leading cumulative pace tracker — replaced the
+        // heatmap grid 2026-09-16, per Blair, same redesign Snap Report's
+        // Timeline got. Day-by-day rows show each year's own per-day % of
+        // that year's total (not cumulative); the Cumulative Tally Tracker
+        // above the table is the only place a running total appears.
+        _renderTimeline(container, daily, total2027, total2026) {
             if (!daily.length) {
                 container.innerHTML = `<div class="empty-row">No timeline data bound yet</div>`;
                 return;
             }
-            const max = Math.max(1, ...daily.map((d) => d.count));
-            const levelFor = (count) => {
-                if (count <= 0) return 0;
-                const ratio = count / max;
-                if (ratio <= 0.25) return 1;
-                if (ratio <= 0.5) return 2;
-                if (ratio <= 0.75) return 3;
-                return 4;
-            };
 
-            const cells = daily.map((d) => {
-                const [, m, dd] = d.date.split("-");
-                const dayLabel = `${Number(m)}/${Number(dd)}`;
-                const isPeak = d.count === max && d.count > 0;
-                return `
-                    <div class="grid-cell level-${levelFor(d.count)}${isPeak ? " peak" : ""}" title="${dayLabel}: ${d.count}">
-                        <div class="grid-cell-value">${d.count}</div>
-                        <div class="grid-cell-label">${dayLabel}</div>
-                    </div>`;
-            }).join("");
+            let cum2027 = 0, cum2026 = 0;
+            const rows = daily.map((d, i) => {
+                cum2027 += d.y2027;
+                cum2026 += d.y2026;
+                return {
+                    dayLabel: `AE Day ${i + 1}`,
+                    mmdd: d.mmdd,
+                    count2027: d.y2027,
+                    pct2027: total2027 ? (d.y2027 / total2027) * 100 : 0,
+                    pct2026: total2026 ? (d.y2026 / total2026) * 100 : 0,
+                };
+            });
 
-            const legend = `
-                <div class="timeline-legend">
-                    <span>Fewer</span>
-                    <span class="legend-swatch level-0"></span>
-                    <span class="legend-swatch level-1"></span>
-                    <span class="legend-swatch level-2"></span>
-                    <span class="legend-swatch level-3"></span>
-                    <span class="legend-swatch level-4"></span>
-                    <span>More</span>
+            const cumPct2027 = total2027 ? (cum2027 / total2027) * 100 : 0;
+            const cumPct2026 = total2026 ? (cum2026 / total2026) * 100 : 0;
+            const pace = this._paceStatus(cumPct2027 - cumPct2026);
+
+            const tracker = `
+                <div class="cum-tracker">
+                    <div class="cum-tracker-title">Cumulative Tally Tracker</div>
+                    <div class="cum-tracker-row">
+                        <div class="cum-stat">
+                            <div class="cum-stat-label">Count Completed 2027</div>
+                            <div class="cum-stat-value">${cum2027.toLocaleString()}</div>
+                        </div>
+                        <div class="cum-stat">
+                            <div class="cum-stat-label">% Completed 2027</div>
+                            <div class="cum-stat-value">${this._formatPct(cumPct2027)}</div>
+                        </div>
+                        <div class="cum-stat">
+                            <div class="cum-stat-label">% Completed 2026</div>
+                            <div class="cum-stat-value">${this._formatPct(cumPct2026)}</div>
+                        </div>
+                        <div class="cum-status ${pace.cls}">${pace.label}</div>
+                    </div>
                 </div>`;
 
-            container.innerHTML = `<div class="timeline-grid">${cells}</div>${legend}`;
+            const tableRows = rows.map((r) => `
+                <tr title="${r.mmdd}">
+                    <td>${r.dayLabel}</td>
+                    <td>${r.count2027.toLocaleString()}</td>
+                    <td>${this._formatPct(r.pct2027)}</td>
+                    <td>${this._formatPct(r.pct2026)}</td>
+                </tr>`).join("");
+
+            const table = `
+                <div class="timeline-table-wrap">
+                    <table class="timeline-table">
+                        <thead>
+                            <tr><th>Day</th><th>Count Completed 2027</th><th>% Completed 2027</th><th>% Completed 2026</th></tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>`;
+
+            container.innerHTML = tracker + table;
         }
     }
 
