@@ -84,10 +84,20 @@
 (function () {
     "use strict";
 
-    const COMPLETED_STATUSES = ["Success"];
-    const DEFAULTED_STATUSES = []; // no real "Defaulted" status value exists yet
+    const COMPLETED_STATUSES = ["Success"]; // still used by the Eligible Employee Band panel's per-band completion rate — unaffected by the Election_Status changes below
     const OPEN_STATUSES = ["Abandoned", "Not Started", "In Progress", "Needs Follow-up"];
     const STALLED_BUCKET_ORDER = ["Stalled 0-3 Days", "Stalled 4-7 Days", "Stalled 8+ Days"];
+    // Election_Status — added 2026-09-18, replacing the old Enrollment_
+    // Status-scoped "Non-Completed — By Status" panel and its Synod
+    // crosstab (see BUILD_PLAN_VWEMPLOYERSAVES.md, "Timeline redesign").
+    // Only differentiates within Enrollment_Status = Success; Open covers
+    // everything else undifferentiated, so both panels now show ALL
+    // employers instead of scoping to "non-completed only".
+    const ELECTION_STATUS_ORDER = ["Open", "Completed EL", "Completed OTP", "Default", "Default Override"];
+    // Attempt-count buckets — added 2026-09-18, replacing the single
+    // "Multiple Attempts" stat with 3 buckets by extra attempts needed
+    // (total save count - 1).
+    const ATTEMPT_BUCKET_ORDER = ["Needed 1 Attempt", "Needed 2 Attempts", "Needed 3+ Attempts"];
     // Eligible Employee Band — mutually-exclusive tiers, confirmed by Blair
     // 2026-09-14 (not overlapping "3+/10+/20+" flags). "Unknown" covers
     // employers with no matching row in vEmployerEligibleCount. Largest-first
@@ -128,6 +138,32 @@
         row(["", "", "HSA Annual - Elected >0", "", ""], [47]),
         row(["", "", "HSA One Time - Elected 0", "", ""], [98]),
         row(["", "", "HSA One Time - Elected >0", "", ""], [15]),
+        // HSA Year-over-Year — added 2026-09-18. measures_1 (EmployeeCount
+        // slot) repurposed to carry SUM($) instead of a headcount.
+        row(["", "", "HSA Annual YoY", "", "2027"], [47, 128500]),
+        row(["", "", "HSA Annual YoY", "", "2026"], [40, 110000]),
+        row(["", "", "HSA One-Time YoY", "", "2027"], [15, 32000]),
+        row(["", "", "HSA One-Time YoY", "", "2026"], [18, 41000]),
+        // Election_Status — added 2026-09-18, now carries Synod_Region too
+        // (unlike every other multiplexed Election_Category row-kind), for
+        // the "By Election Status & Synod" crosstab. Reconciled against the
+        // Status rows above: each region's Completed EL/OTP/Default(
+        // Override) sum to that region's Success total, and each region's
+        // Open value sums to its own Not Started+In Progress+Abandoned+
+        // Needs Follow-up total (53/36/18 and 12/16/8 respectively).
+        row(["", "Southwestern Minnesota", "Open", "", ""], [12]),
+        row(["", "Southwestern Minnesota", "Completed EL", "", ""], [44]),
+        row(["", "Southwestern Minnesota", "Completed OTP", "", ""], [6]),
+        row(["", "Southwestern Minnesota", "Default", "", ""], [2]),
+        row(["", "Southwestern Minnesota", "Default Override", "", ""], [1]),
+        row(["", "Metropolitan Chicago", "Open", "", ""], [16]),
+        row(["", "Metropolitan Chicago", "Completed EL", "", ""], [30]),
+        row(["", "Metropolitan Chicago", "Completed OTP", "", ""], [4]),
+        row(["", "Metropolitan Chicago", "Default", "", ""], [2]),
+        row(["", "Southeastern Synod", "Open", "", ""], [8]),
+        row(["", "Southeastern Synod", "Completed EL", "", ""], [15]),
+        row(["", "Southeastern Synod", "Completed OTP", "", ""], [2]),
+        row(["", "Southeastern Synod", "Default", "", ""], [1]),
         // Timeline — 2027-only since 2026-09-16 (the 2026 series and its
         // supporting mock bucket rows above were removed — see BUILD_PLAN
         // doc, "Reversal: 2026 day-by-day Timeline data is not usable").
@@ -145,8 +181,11 @@
         row(["", "", "", "2026-10-12", "2027"], [1]),
         row(["", "", "", "2026-10-13", "2027"], [12]),
         row(["", "", "", "2026-10-14", "2027"], [16]),
-        // New operational-only row-kinds, added 2026-09-13.
-        row(["", "", "Multiple Attempts", "", ""], [9]),
+        // New operational-only row-kinds, added 2026-09-13. "Multiple
+        // Attempts" replaced with 3 buckets 2026-09-18.
+        row(["", "", "Needed 1 Attempt", "", ""], [6]),
+        row(["", "", "Needed 2 Attempts", "", ""], [4]),
+        row(["", "", "Needed 3+ Attempts", "", ""], [2]),
         row(["", "", "Stalled 0-3 Days", "", ""], [12]),
         row(["", "", "Stalled 4-7 Days", "", ""], [7]),
         row(["", "", "Stalled 8+ Days", "", ""], [5]),
@@ -300,18 +339,18 @@
             .cum-stat-label { font-size: 10px; color: var(--text-soft); white-space: nowrap; }
             .cum-stat-value { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 
-            .timeline-table-wrap { overflow-x: auto; }
-            .timeline-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
-            .timeline-table th, .timeline-table td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); }
-            .timeline-table th:first-child, .timeline-table td:first-child { text-align: left; }
-            .timeline-table thead th { color: var(--text-soft); font-weight: 600; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.03em; }
-            .timeline-table tbody td { font-variant-numeric: tabular-nums; color: var(--text); }
-            .timeline-table tbody tr:last-child td { border-bottom: none; }
+            /* ---- Timeline charts — replaced the day-by-day table
+               2026-09-18, per Blair: hand-rolled inline SVG (no charting
+               library — same CSP-strict/dependency-free constraint as
+               everywhere else in this widget). ---- */
+            .chart-wrap { margin-top: 10px; }
+            .chart-svg { width: 100%; height: 150px; display: block; }
+            .chart-axis-label { font-size: 9px; fill: var(--text-soft); }
         </style>
         <div class="dashboard">
             <div class="topbar">
                 <div>
-                    <div class="eyebrow">2026 Annual Enrollment</div>
+                    <div class="eyebrow">2027 Annual Enrollment</div>
                     <div class="titlewrap">
                         <h1>Operations</h1>
                         <span class="badge accent" id="dataBadge">Mock Data — Preview</span>
@@ -323,7 +362,7 @@
             <div class="section-title">Employer Selection</div>
             <div class="grid" id="employerTiles"></div>
 
-            <div class="section-title">Not Yet Completed — By Employer Size</div>
+            <div class="section-title">Completed — By Employer Size</div>
             <div class="panel-caption" style="margin-top:-4px;">% of employers completed, by eligible employee band (largest first)</div>
             <div class="callout" id="bandCallout" hidden></div>
             <div class="panel">
@@ -333,8 +372,8 @@
             <div class="section-title">Working Queue</div>
             <div class="panels">
                 <div class="panel">
-                    <div class="section-title" style="margin-top:0;">Non-Completed — By Status</div>
-                    <div class="panel-caption" style="margin-top:-4px;">Employers not yet completed, by current status</div>
+                    <div class="section-title" style="margin-top:0;">By Election Status</div>
+                    <div class="panel-caption" style="margin-top:-4px;">All employers, by election status</div>
                     <div id="statusBreakdown"></div>
                 </div>
                 <div class="panel">
@@ -349,8 +388,8 @@
                 </div>
             </div>
 
-            <div class="section-title">Non-Completed — By Status &amp; Synod</div>
-            <div class="panel-caption" style="margin-top:-4px;">Working queue broken out by region</div>
+            <div class="section-title">By Election Status &amp; Synod</div>
+            <div class="panel-caption" style="margin-top:-4px;">All employers broken out by region</div>
             <div class="panel">
                 <div class="crosstab-wrap" id="synodStatusCrosstab"></div>
             </div>
@@ -363,6 +402,11 @@
                     <div id="electionBreakdown"></div>
                 </div>
                 <div class="panel">
+                    <div class="section-title" style="margin-top:0;">HSA Year-over-Year</div>
+                    <div class="panel-caption" style="margin-top:-4px;">Total $ elected and employer count, 2026 vs. 2027</div>
+                    <div id="hsaYoyBreakdown"></div>
+                </div>
+                <div class="panel">
                     <div class="section-title" style="margin-top:0;">HSA Elections</div>
                     <div class="panel-caption" style="margin-top:-4px;">Completed employers' HSA/HRA elections</div>
                     <div id="hsaBreakdown"></div>
@@ -370,7 +414,7 @@
             </div>
 
             <div class="section-title" id="timelineTitle">Timeline</div>
-            <div class="panel-caption" id="timelineCaption">Day-by-day completions and cumulative pace vs. 2026</div>
+            <div class="panel-caption" id="timelineCaption">Daily and cumulative completions (Completed EL / Completed OTP only)</div>
             <div class="panel">
                 <div id="timelineChart"></div>
             </div>
@@ -430,7 +474,6 @@
 
         _statusBucket(status) {
             if (COMPLETED_STATUSES.includes(status)) return "Completed";
-            if (DEFAULTED_STATUSES.includes(status)) return "Defaulted";
             if (OPEN_STATUSES.includes(status)) return "Open";
             return null;
         }
@@ -444,6 +487,14 @@
                 return `${human[3]}-${MONTHS[human[1]]}-${human[2].padStart(2, "0")}`;
             }
             return raw;
+        }
+
+        // Added 2026-09-18 for the HSA Year-over-Year panel. Sign kept
+        // separate from the digits ("-$500.00" not "$-500.00").
+        _money(v) {
+            const n = Number(v || 0);
+            const sign = n < 0 ? "-" : "";
+            return sign + "$" + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         // Fixed AE election window — confirmed by Blair, 2026-09-15/16:
@@ -495,8 +546,8 @@
             const rows = (this._employerStatus && this._employerStatus.data) || [];
             const bySynod = {};
             const bySynodNames = {};
-            const bySynodStatus = {}; // groupKey -> { status -> count } — new 2026-09-13 cross-tab
-            const byStatus = {};
+            const byElectionStatus = {}; // added 2026-09-18, replaces byStatus
+            const bySynodElectionStatus = {}; // groupKey -> { status -> count }, replaces bySynodStatus
             const rawDates = {}; // simplified back to single-series 2026-09-16 (was rawDatesByYear) —
                                     // the 2026 side was removed entirely, see BUILD_PLAN_VWEMPLOYERSAVES.md,
                                     // "Reversal: 2026 day-by-day Timeline data is not usable". Keyed by
@@ -504,10 +555,12 @@
                                     // calendar year and clip/zero-fill to the fixed 10/1-10/14 AE window.
             const byHealthPlan = {};
             const byHsaBucket = {};
+            const byHsaYoy = {}; // added 2026-09-18 — "HSA Annual YoY"/"HSA One-Time YoY" -> { "2026"/"2027": {count, amount} }
             const byStalledBucket = {}; // new 2026-09-13
             const byBand = {}; // new 2026-09-14 — { total, completed } per Eligible Employee Band
-            let totalSetUp = 0, completed = 0, defaulted = 0, open = 0;
-            let multipleAttempts = 0, recentlyCompleted = 0; // new 2026-09-13
+            const byAttemptBucket = {}; // added 2026-09-18, replaces multipleAttempts
+            let totalSetUp = 0, completed = 0, open = 0;
+            let recentlyCompleted = 0; // new 2026-09-13
 
             rows.forEach((r) => {
                 const status = this._dim(r, 0);
@@ -516,6 +569,7 @@
                 const date = this._dim(r, 3);
                 const year = this._dim(r, 4);
                 const employerCount = this._measure(r, 0);
+                const employeeCount = this._measure(r, 1); // only meaningful on "HSA ... YoY" rows, see below
 
                 if (date) {
                     // Defensive: skip any date row not tagged 2027 (or
@@ -539,6 +593,34 @@
                     return;
                 }
 
+                // Election_Status — added 2026-09-18. Checked before the
+                // generic "HSA " and year-tagged branches below since this
+                // row-kind carries Synod_Region populated (unlike every
+                // other multiplexed Election_Category row-kind), needed for
+                // the "By Election Status & Synod" crosstab.
+                if (ELECTION_STATUS_ORDER.includes(subType)) {
+                    byElectionStatus[subType] = (byElectionStatus[subType] || 0) + employerCount;
+                    if (synod) {
+                        const groupKey = this._synodGroupKey(synod);
+                        if (!bySynodElectionStatus[groupKey]) bySynodElectionStatus[groupKey] = {};
+                        bySynodElectionStatus[groupKey][subType] = (bySynodElectionStatus[groupKey][subType] || 0) + employerCount;
+                    }
+                    return;
+                }
+
+                // HSA Annual/One-Time YoY — added 2026-09-18. Checked before
+                // the generic "HSA " prefix branch below, since both of
+                // these subType values also start with "HSA " and would
+                // otherwise be misrouted into byHsaBucket. EmployeeCount is
+                // repurposed here to carry SUM($), not a headcount — same
+                // "reuse the measure slot per row-kind" pattern already used
+                // for "Eligible Count".
+                if ((subType === "HSA Annual YoY" || subType === "HSA One-Time YoY") && year) {
+                    if (!byHsaYoy[subType]) byHsaYoy[subType] = {};
+                    byHsaYoy[subType][year] = { count: employerCount, amount: employeeCount };
+                    return;
+                }
+
                 if (subType && subType.indexOf("HSA ") === 0) {
                     byHsaBucket[subType] = (byHsaBucket[subType] || 0) + employerCount;
                     return;
@@ -546,15 +628,15 @@
 
                 if (subType && year) {
                     // Only the 2027 side is ever read downstream (byElectionType) —
-                    // this widget has no YoY panel — but both years are harmlessly
-                    // tracked here in case that changes later.
+                    // this widget has no other YoY panel besides HSA — but both
+                    // years are harmlessly tracked here in case that changes later.
                     if (!byHealthPlan[year]) byHealthPlan[year] = {};
                     byHealthPlan[year][subType] = (byHealthPlan[year][subType] || 0) + employerCount;
                     return;
                 }
 
-                if (subType === "Multiple Attempts") {
-                    multipleAttempts += employerCount;
+                if (ATTEMPT_BUCKET_ORDER.includes(subType)) {
+                    byAttemptBucket[subType] = (byAttemptBucket[subType] || 0) + employerCount;
                     return;
                 }
 
@@ -580,12 +662,7 @@
 
                 totalSetUp += employerCount;
                 if (bucket === "Completed") completed += employerCount;
-                else if (bucket === "Defaulted") defaulted += employerCount;
                 else if (bucket === "Open") open += employerCount;
-
-                if (bucket === "Open" && status) {
-                    byStatus[status] = (byStatus[status] || 0) + employerCount;
-                }
 
                 if (synod) {
                     const groupKey = this._synodGroupKey(synod);
@@ -594,11 +671,6 @@
                     if (bucket === "Completed") bySynod[groupKey].completed += employerCount;
                     if (!bySynodNames[groupKey]) bySynodNames[groupKey] = new Set();
                     bySynodNames[groupKey].add(synod);
-
-                    if (bucket === "Open" && status) {
-                        if (!bySynodStatus[groupKey]) bySynodStatus[groupKey] = {};
-                        bySynodStatus[groupKey][status] = (bySynodStatus[groupKey][status] || 0) + employerCount;
-                    }
                 }
             });
 
@@ -615,11 +687,11 @@
                 daily.push({ mmdd, count: fixed[mmdd] || 0 });
             }
             return {
-                totalSetUp, completed, defaulted, open, pctComplete,
-                bySynod, bySynodNames, bySynodStatus, byStatus, daily,
+                totalSetUp, completed, open, pctComplete,
+                bySynod, bySynodNames, byElectionStatus, bySynodElectionStatus, byHsaYoy, daily,
                 byElectionType: byHealthPlan["2027"] || {},
                 byHsaBucket, byStalledBucket, byBand,
-                multipleAttempts, recentlyCompleted,
+                byAttemptBucket, recentlyCompleted,
             };
         }
 
@@ -730,7 +802,9 @@
             ].join("");
             root.getElementById("employerTiles").innerHTML = tilesHtml;
 
-            // Not Yet Completed — By Employer Size — new 2026-09-14.
+            // Completed — By Employer Size — new 2026-09-14, retitled
+            // 2026-09-18 (the panel always showed % *completed* per band,
+            // the old title just said the opposite).
             // Largest-band-first, mirroring Executive's Synod progress
             // panel design. A callout above the panel surfaces the 20+
             // band's outstanding (non-completed) count specifically, since
@@ -755,12 +829,20 @@
                 bandCalloutEl.hidden = true;
             }
 
-            // Non-Completed by status.
-            const statusEntries = Object.keys(status.byStatus).map((s) => {
-                const pct = status.open ? (status.byStatus[s] / status.open) * 100 : 0;
-                return { name: s, value: Number(status.byStatus[s]).toLocaleString(), sub: `${this._formatPct(pct)} of non-completed` };
+            // By Election Status — replaced the Enrollment_Status-scoped
+            // "Non-Completed — By Status" panel 2026-09-18, per Blair, same
+            // reasoning as Snap Report's identical change: Election_Status
+            // only differentiates within Success (Open absorbs everything
+            // else undifferentiated), so scoping to "non-completed only"
+            // would have shown nothing useful — this now covers ALL
+            // employers instead, zero-filled in the legacy report's fixed
+            // column order.
+            const statusEntries = ELECTION_STATUS_ORDER.map((s) => {
+                const count = status.byElectionStatus[s] || 0;
+                const pct = status.totalSetUp ? (count / status.totalSetUp) * 100 : 0;
+                return { name: s, value: count.toLocaleString(), sub: `${this._formatPct(pct)} of total` };
             });
-            root.getElementById("statusBreakdown").innerHTML = this._statRowsHtml(statusEntries, "No status data bound yet");
+            root.getElementById("statusBreakdown").innerHTML = this._statRowsHtml(statusEntries, "No election status data bound yet");
 
             // Stalled-time buckets — new 2026-09-13.
             const stalledEntries = STALLED_BUCKET_ORDER
@@ -768,22 +850,24 @@
                 .map((k) => ({ name: k.replace("Stalled ", ""), value: status.byStalledBucket[k] }));
             root.getElementById("stalledBreakdown").innerHTML = this._breakdownRowsHtml(stalledEntries, "No stalled-time data bound yet");
 
-            // Multiple Attempts / Recently Completed — new 2026-09-13, two
-            // simple stat callouts side by side.
+            // Attempt buckets (1 / 2 / 3+ extra attempts) / Recently
+            // Completed — attempt buckets replaced the single "Needed >1
+            // Attempt" stat 2026-09-18, per Blair.
             const activityEntries = [
-                { name: "Needed >1 Attempt", value: status.multipleAttempts.toLocaleString() },
+                ...ATTEMPT_BUCKET_ORDER.map((b) => ({ name: b, value: (status.byAttemptBucket[b] || 0).toLocaleString() })),
                 { name: "Completed in Last 2 Days", value: status.recentlyCompleted.toLocaleString() },
             ];
             root.getElementById("activityStats").innerHTML = this._statRowsHtml(activityEntries, "No activity data bound yet");
 
-            // Non-Completed by Status & Synod cross-tab — new 2026-09-13.
-            const OPEN_STATUS_COLUMNS = ["Not Started", "In Progress", "Abandoned", "Needs Follow-up"];
+            // By Election Status & Synod cross-tab — replaced the
+            // Enrollment_Status-scoped "Non-Completed — By Status & Synod"
+            // 2026-09-18, same reasoning as the panel above.
             const synodRows = Object.keys(status.bySynod).map((s) => ({
                 key: s,
                 name: /^\d+$/.test(s) ? `Synod ${s}` : s,
                 title: status.bySynodNames[s] ? Array.from(status.bySynodNames[s]).sort().join(", ") : undefined,
             }));
-            root.getElementById("synodStatusCrosstab").innerHTML = this._crosstabHtml(synodRows, OPEN_STATUS_COLUMNS, status.bySynodStatus, "No Synod/Status data bound yet");
+            root.getElementById("synodStatusCrosstab").innerHTML = this._crosstabHtml(synodRows, ELECTION_STATUS_ORDER, status.bySynodElectionStatus, "No Synod/Election Status data bound yet");
 
             // Of-complete election sub-type breakdown (current year — 2027).
             const electionEntries = Object.keys(status.byElectionType).map((t) => ({ name: t, value: status.byElectionType[t] }));
@@ -801,6 +885,29 @@
                 .map((k) => ({ name: HSA_LABELS[k], value: status.byHsaBucket[k] }));
             root.getElementById("hsaBreakdown").innerHTML = this._breakdownRowsHtml(hsaEntries, "No HSA data bound yet");
 
+            // HSA Year-over-Year — new 2026-09-18, per Blair: is this year's
+            // HSA activity above or below last year's? Annual and One-Time
+            // shown as separate lines, each with a dollar total and an
+            // employer count, both years.
+            const hsaYoyEntries = [];
+            [["HSA Annual YoY", "Annual"], ["HSA One-Time YoY", "One-Time"]].forEach(([key, label]) => {
+                const y2026 = (status.byHsaYoy[key] && status.byHsaYoy[key]["2026"]) || { count: 0, amount: 0 };
+                const y2027 = (status.byHsaYoy[key] && status.byHsaYoy[key]["2027"]) || { count: 0, amount: 0 };
+                const amountDelta = y2027.amount - y2026.amount;
+                const countDelta = y2027.count - y2026.count;
+                hsaYoyEntries.push({
+                    name: `${label} — $ Elected`,
+                    value: `${amountDelta >= 0 ? "+" : ""}${this._money(amountDelta)}`,
+                    sub: `${this._money(y2026.amount)} (2026) → ${this._money(y2027.amount)} (2027)`,
+                });
+                hsaYoyEntries.push({
+                    name: `${label} — Employers`,
+                    value: `${countDelta >= 0 ? "+" : ""}${countDelta.toLocaleString()}`,
+                    sub: `${y2026.count.toLocaleString()} (2026) → ${y2027.count.toLocaleString()} (2027)`,
+                });
+            });
+            root.getElementById("hsaYoyBreakdown").innerHTML = this._statRowsHtml(hsaYoyEntries, "No HSA YoY data bound yet");
+
             // Timeline — day-by-day table + cumulative tracker, 2027-only
             // since 2026-09-16 (ACTDATE can't support day-by-day for 2026 —
             // see BUILD_PLAN doc).
@@ -816,10 +923,69 @@
             }
         }
 
-        // Day-by-day table + leading cumulative tracker — reworked
-        // 2026-09-16 to drop the 2026 series entirely (see BUILD_PLAN doc,
-        // "Reversal: 2026 day-by-day Timeline data is not usable"). Kept:
-        // the fixed 10/1-10/14 window design, and Count/% Completed 2027.
+        // ---- Timeline charts — hand-rolled inline SVG, no charting
+        // library (same CSP-strict/dependency-free constraint as
+        // everywhere else in this widget). Added 2026-09-18, replacing the
+        // old day-by-day table — Blair wanted a line chart for the
+        // cumulative trend and a bar chart for daily volume instead of a
+        // text table. Both read the same `daily` array the table used to;
+        // it's already scoped to genuine completions only (Completed EL +
+        // Completed OTP) by the cube's own Timeline block SQL, so no
+        // additional filtering happens here. Cloned verbatim from
+        // sac-ae-snap-report-widget, same as every other Timeline change
+        // in this project's history. ----
+        _svgLineChart(daily) {
+            const width = 700, height = 150, padL = 34, padR = 10, padT = 12, padB = 22;
+            const innerW = width - padL - padR;
+            const innerH = height - padT - padB;
+            let cum = 0;
+            const points = daily.map((d) => (cum += d.count));
+            const max = Math.max(1, ...points);
+            const n = daily.length;
+            const stepX = n > 1 ? innerW / (n - 1) : 0;
+            const coords = points.map((v, i) => [padL + i * stepX, padT + innerH - (v / max) * innerH]);
+            const linePath = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+            const areaPath = `${linePath} L${coords[n - 1][0].toFixed(1)},${(padT + innerH).toFixed(1)} L${coords[0][0].toFixed(1)},${(padT + innerH).toFixed(1)} Z`;
+            const dots = coords.map(([x, y], i) =>
+                `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--accent)"><title>Day ${i + 1}: ${points[i].toLocaleString()} cumulative</title></circle>`
+            ).join("");
+            const labels = coords.map(([x], i) =>
+                `<text x="${x.toFixed(1)}" y="${height - 6}" class="chart-axis-label" text-anchor="middle">${i + 1}</text>`
+            ).join("");
+            return `<svg viewBox="0 0 ${width} ${height}" class="chart-svg" role="img" aria-label="Cumulative completions by AE day">
+                <path d="${areaPath}" fill="var(--accent-bg)"></path>
+                <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2"></path>
+                ${dots}${labels}
+            </svg>`;
+        }
+
+        _svgBarChart(daily) {
+            const width = 700, height = 150, padL = 34, padR = 10, padT = 12, padB = 22;
+            const innerW = width - padL - padR;
+            const innerH = height - padT - padB;
+            const n = daily.length;
+            const max = Math.max(1, ...daily.map((d) => d.count));
+            const gap = 6;
+            const barW = (innerW - gap * (n - 1)) / n;
+            const bars = daily.map((d, i) => {
+                const x = padL + i * (barW + gap);
+                const h = (d.count / max) * innerH;
+                const y = padT + innerH - h;
+                return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="var(--accent)"><title>Day ${i + 1}: ${d.count.toLocaleString()} completions</title></rect>`;
+            }).join("");
+            const labels = daily.map((d, i) => {
+                const x = padL + i * (barW + gap) + barW / 2;
+                return `<text x="${x.toFixed(1)}" y="${height - 6}" class="chart-axis-label" text-anchor="middle">${i + 1}</text>`;
+            }).join("");
+            return `<svg viewBox="0 0 ${width} ${height}" class="chart-svg" role="img" aria-label="Daily completions by AE day">
+                ${bars}${labels}
+            </svg>`;
+        }
+
+        // Leading cumulative tracker (numbers + line chart) + a separate
+        // daily-volume bar chart — replaced the day-by-day table entirely
+        // 2026-09-18. Kept: the fixed 10/1-10/14 window design, and
+        // Count/% Completed 2027.
         _renderTimeline(container, daily, total2027) {
             if (!daily.length) {
                 container.innerHTML = `<div class="empty-row">No timeline data bound yet</div>`;
@@ -827,16 +993,7 @@
             }
 
             let cum2027 = 0;
-            const rows = daily.map((d, i) => {
-                cum2027 += d.count;
-                return {
-                    dayLabel: `AE Day ${i + 1}`,
-                    mmdd: d.mmdd,
-                    count2027: d.count,
-                    pct2027: total2027 ? (d.count / total2027) * 100 : 0,
-                };
-            });
-
+            daily.forEach((d) => { cum2027 += d.count; });
             const cumPct2027 = total2027 ? (cum2027 / total2027) * 100 : 0;
 
             const tracker = `
@@ -852,26 +1009,12 @@
                             <div class="cum-stat-value">${this._formatPct(cumPct2027)}</div>
                         </div>
                     </div>
-                </div>`;
+                    <div class="chart-wrap">${this._svgLineChart(daily)}</div>
+                </div>
+                <div class="section-title" style="margin-top:0;">Daily Completions</div>
+                <div class="chart-wrap">${this._svgBarChart(daily)}</div>`;
 
-            const tableRows = rows.map((r) => `
-                <tr title="${r.mmdd}">
-                    <td>${r.dayLabel}</td>
-                    <td>${r.count2027.toLocaleString()}</td>
-                    <td>${this._formatPct(r.pct2027)}</td>
-                </tr>`).join("");
-
-            const table = `
-                <div class="timeline-table-wrap">
-                    <table class="timeline-table">
-                        <thead>
-                            <tr><th>Day</th><th>Count Completed 2027</th><th>% Completed 2027</th></tr>
-                        </thead>
-                        <tbody>${tableRows}</tbody>
-                    </table>
-                </div>`;
-
-            container.innerHTML = tracker + table;
+            container.innerHTML = tracker;
         }
     }
 
