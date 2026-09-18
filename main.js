@@ -377,7 +377,7 @@
                     <div id="statusBreakdown"></div>
                 </div>
                 <div class="panel">
-                    <div class="section-title" style="margin-top:0;">Stalled Time</div>
+                    <div class="section-title" style="margin-top:0;">Started not Completed</div>
                     <div class="panel-caption" style="margin-top:-4px;">Non-completed employers, by days since last attempt</div>
                     <div id="stalledBreakdown"></div>
                 </div>
