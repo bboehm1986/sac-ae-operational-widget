@@ -344,8 +344,12 @@
                library — same CSP-strict/dependency-free constraint as
                everywhere else in this widget). ---- */
             .chart-wrap { margin-top: 10px; }
-            .chart-svg { width: 100%; height: 150px; display: block; }
+            .chart-svg { width: 100%; height: 170px; display: block; }
             .chart-axis-label { font-size: 9px; fill: var(--text-soft); }
+            .chart-legend { display: flex; gap: 16px; margin-top: 12px; }
+            .chart-legend-item { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text-soft); }
+            .chart-legend-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--info); opacity: 0.45; }
+            .chart-legend-swatch.line { width: 14px; height: 2px; border-radius: 1px; background: var(--accent); opacity: 1; }
         </style>
         <div class="dashboard">
             <div class="topbar">
@@ -929,65 +933,66 @@
         // library (same CSP-strict/dependency-free constraint as
         // everywhere else in this widget). Added 2026-09-18, replacing the
         // old day-by-day table — Blair wanted a line chart for the
-        // cumulative trend and a bar chart for daily volume instead of a
-        // text table. Both read the same `daily` array the table used to;
-        // it's already scoped to genuine completions only (Completed EL +
-        // Completed OTP) by the cube's own Timeline block SQL, so no
-        // additional filtering happens here. Cloned verbatim from
+        // cumulative trend and a bar chart for daily volume; combined into
+        // a single dual-axis chart 2026-09-18 (was two stacked charts).
+        // Reads the same `daily` array the table used to; it's already
+        // scoped to genuine completions only (Completed EL + Completed
+        // OTP) by the cube's own Timeline block SQL, so no additional
+        // filtering happens here. Cloned verbatim from
         // sac-ae-snap-report-widget, same as every other Timeline change
         // in this project's history. ----
-        _svgLineChart(daily) {
-            const width = 700, height = 150, padL = 34, padR = 10, padT = 12, padB = 22;
+        // Bars (daily count) scale against their own max on a left axis;
+        // the line (cumulative) scales independently against its own max
+        // on a right axis, since cumulative totals run far higher than any
+        // single day's count — a shared scale would flatten the bars.
+        _svgComboChart(daily) {
+            const width = 700, height = 170, padL = 34, padR = 34, padT = 14, padB = 22;
             const innerW = width - padL - padR;
             const innerH = height - padT - padB;
+            const n = daily.length;
+            const barMax = Math.max(1, ...daily.map((d) => d.count));
             let cum = 0;
-            const points = daily.map((d) => (cum += d.count));
-            const max = Math.max(1, ...points);
-            const n = daily.length;
-            const stepX = n > 1 ? innerW / (n - 1) : 0;
-            const coords = points.map((v, i) => [padL + i * stepX, padT + innerH - (v / max) * innerH]);
-            const linePath = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-            const areaPath = `${linePath} L${coords[n - 1][0].toFixed(1)},${(padT + innerH).toFixed(1)} L${coords[0][0].toFixed(1)},${(padT + innerH).toFixed(1)} Z`;
-            const dots = coords.map(([x, y], i) =>
-                `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--accent)"><title>Day ${i + 1}: ${points[i].toLocaleString()} cumulative</title></circle>`
-            ).join("");
-            const labels = coords.map(([x], i) =>
-                `<text x="${x.toFixed(1)}" y="${height - 6}" class="chart-axis-label" text-anchor="middle">${i + 1}</text>`
-            ).join("");
-            return `<svg viewBox="0 0 ${width} ${height}" class="chart-svg" role="img" aria-label="Cumulative completions by AE day">
-                <path d="${areaPath}" fill="var(--accent-bg)"></path>
-                <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2"></path>
-                ${dots}${labels}
-            </svg>`;
-        }
-
-        _svgBarChart(daily) {
-            const width = 700, height = 150, padL = 34, padR = 10, padT = 12, padB = 22;
-            const innerW = width - padL - padR;
-            const innerH = height - padT - padB;
-            const n = daily.length;
-            const max = Math.max(1, ...daily.map((d) => d.count));
+            const cumPoints = daily.map((d) => (cum += d.count));
+            const cumMax = Math.max(1, ...cumPoints);
             const gap = 6;
             const barW = (innerW - gap * (n - 1)) / n;
+
             const bars = daily.map((d, i) => {
                 const x = padL + i * (barW + gap);
-                const h = (d.count / max) * innerH;
+                const h = (d.count / barMax) * innerH;
                 const y = padT + innerH - h;
-                return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="var(--accent)"><title>Day ${i + 1}: ${d.count.toLocaleString()} completions</title></rect>`;
+                return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="var(--info)" opacity="0.45"><title>Day ${i + 1}: ${d.count.toLocaleString()} completions</title></rect>`;
             }).join("");
-            const labels = daily.map((d, i) => {
+
+            const stepX = n > 1 ? innerW / (n - 1) : 0;
+            const coords = cumPoints.map((v, i) => [padL + i * stepX, padT + innerH - (v / cumMax) * innerH]);
+            const linePath = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+            const dots = coords.map(([x, y], i) =>
+                `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--accent)"><title>Day ${i + 1}: ${cumPoints[i].toLocaleString()} cumulative</title></circle>`
+            ).join("");
+
+            const dayLabels = daily.map((d, i) => {
                 const x = padL + i * (barW + gap) + barW / 2;
                 return `<text x="${x.toFixed(1)}" y="${height - 6}" class="chart-axis-label" text-anchor="middle">${i + 1}</text>`;
             }).join("");
-            return `<svg viewBox="0 0 ${width} ${height}" class="chart-svg" role="img" aria-label="Daily completions by AE day">
-                ${bars}${labels}
+            const axisLabels = `
+                <text x="${(padL - 8).toFixed(1)}" y="${(padT + 4).toFixed(1)}" class="chart-axis-label" text-anchor="end">${barMax.toLocaleString()}</text>
+                <text x="${(padL - 8).toFixed(1)}" y="${(padT + innerH).toFixed(1)}" class="chart-axis-label" text-anchor="end">0</text>
+                <text x="${(width - padR + 8).toFixed(1)}" y="${(padT + 4).toFixed(1)}" class="chart-axis-label" text-anchor="start">${cumMax.toLocaleString()}</text>
+                <text x="${(width - padR + 8).toFixed(1)}" y="${(padT + innerH).toFixed(1)}" class="chart-axis-label" text-anchor="start">0</text>`;
+
+            return `<svg viewBox="0 0 ${width} ${height}" class="chart-svg" role="img" aria-label="Daily and cumulative completions by AE day">
+                ${bars}
+                <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2"></path>
+                ${dots}${dayLabels}${axisLabels}
             </svg>`;
         }
 
-        // Leading cumulative tracker (numbers + line chart) + a separate
-        // daily-volume bar chart — replaced the day-by-day table entirely
-        // 2026-09-18. Kept: the fixed 10/1-10/14 window design, and
-        // Count/% Completed 2027.
+        // Leading cumulative tracker (numbers) + one combined bar+line
+        // chart (daily volume as bars, cumulative as an overlaid line) —
+        // combined into a single chart 2026-09-18, replacing the two
+        // stacked charts from earlier the same day. Kept: the fixed
+        // 10/1-10/14 window design, and Count/% Completed 2027.
         _renderTimeline(container, daily, total2027) {
             if (!daily.length) {
                 container.innerHTML = `<div class="empty-row">No timeline data bound yet</div>`;
@@ -1011,10 +1016,12 @@
                             <div class="cum-stat-value">${this._formatPct(cumPct2027)}</div>
                         </div>
                     </div>
-                    <div class="chart-wrap">${this._svgLineChart(daily)}</div>
-                </div>
-                <div class="section-title" style="margin-top:0;">Daily Completions</div>
-                <div class="chart-wrap">${this._svgBarChart(daily)}</div>`;
+                    <div class="chart-legend">
+                        <div class="chart-legend-item"><span class="chart-legend-swatch bar"></span>Daily completions</div>
+                        <div class="chart-legend-item"><span class="chart-legend-swatch line"></span>Cumulative</div>
+                    </div>
+                    <div class="chart-wrap">${this._svgComboChart(daily)}</div>
+                </div>`;
 
             container.innerHTML = tracker;
         }
