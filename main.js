@@ -277,9 +277,13 @@
             .titlewrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
             .badge { font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em; padding: 3px 9px; border-radius: 100px; border: 1px solid; white-space: nowrap; }
             .badge.accent { color: var(--accent); border-color: rgba(106,92,240,0.35); background: var(--accent-bg); }
+            .badge.success { color: var(--success); border-color: rgba(20,151,111,0.35); background: var(--success-bg); }
+            .badge.warning { color: var(--warning); border-color: rgba(165,112,12,0.35); background: var(--warning-bg); }
+            .badge.danger { color: var(--danger); border-color: rgba(201,75,75,0.35); background: var(--danger-bg); }
             .asof { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
 
             .section-title { font-size: 11.5px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.05em; margin: 22px 0 8px; }
+            .section-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 22px 0 8px; }
             .panel-caption { font-size: 12px; color: var(--text-soft); margin: -6px 0 8px; }
 
             .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
@@ -358,6 +362,7 @@
                     <div class="titlewrap">
                         <h1>Operations</h1>
                         <span class="badge accent" id="dataBadge">Mock Data — Preview</span>
+                        <span id="pacingBadgeHeader"></span>
                     </div>
                     <div class="asof" id="asof"></div>
                 </div>
@@ -417,7 +422,10 @@
                 </div>
             </div>
 
-            <div class="section-title" id="timelineTitle">Timeline</div>
+            <div class="section-title-row">
+                <div class="section-title" id="timelineTitle" style="margin:0;">Timeline</div>
+                <span id="pacingBadgeTimeline"></span>
+            </div>
             <div class="panel-caption" id="timelineCaption">Daily and cumulative completions (Completed EL / Completed OTP only)</div>
             <div class="panel">
                 <div id="timelineChart"></div>
@@ -509,6 +517,55 @@
         static get AE_WINDOW_MONTH() { return "10"; }
         static get AE_WINDOW_START_DAY() { return 1; }
         static get AE_WINDOW_LENGTH_DAYS() { return 14; }
+
+        // Expected cumulative % of total completions by day-of-window,
+        // added 2026-09-18 per Blair's historical send/reminder schedule
+        // (Email Invite -> Reminder 1/2/3 -> Final Reminder -> Assigned
+        // Value HDHP default), scaled onto the 14-day 10/1-10/14 window.
+        // Index 0 = day 1 (10/1). A static reference curve, not sourced
+        // from Datasphere -- it doesn't change year to year.
+        static get AE_EXPECTED_PACING() {
+            return [0.0, 5.5, 10.9, 16.4, 21.8, 27.3, 33.1, 39.0, 44.8, 52.1, 59.5, 74.6, 81.1, 87.7];
+        }
+
+        // Compares actual cumulative completion % against the expected
+        // pacing curve for today's real calendar position in the
+        // (recurring, every October) 10/1-10/14 AE window -- independent
+        // of which year the bound data's Timeline rows anchor to. Being
+        // ahead of pace never downgrades the badge, only falling behind
+        // does (Blair's call, 2026-09-18): a tracker shouldn't turn red
+        // just because enrollment finished early. Returns null before the
+        // window opens (nothing to compare yet); after it closes, returns
+        // a final read against day 14's expectation.
+        _pacingStatus(daily, total2027) {
+            const now = new Date();
+            const month = now.getMonth(); // 0-indexed; October = 9
+            const day = now.getDate();
+            let dayIndex;
+            if (month < 9 || (month === 9 && day < this.constructor.AE_WINDOW_START_DAY)) return null;
+            if (month > 9 || (month === 9 && day > this.constructor.AE_WINDOW_LENGTH_DAYS)) {
+                dayIndex = this.constructor.AE_WINDOW_LENGTH_DAYS;
+            } else {
+                dayIndex = day;
+            }
+
+            const expectedPct = this.constructor.AE_EXPECTED_PACING[dayIndex - 1];
+            let cum = 0;
+            daily.forEach((d) => { cum += d.count; });
+            const actualPct = total2027 ? (cum / total2027) * 100 : 0;
+            const diff = actualPct - expectedPct; // negative = behind pace
+
+            let tier, label;
+            if (diff >= -5) { tier = "success"; label = "On Track"; }
+            else if (diff >= -15) { tier = "warning"; label = "Needs Attention"; }
+            else { tier = "danger"; label = "At Risk"; }
+            return { tier, label, expectedPct, actualPct, dayIndex };
+        }
+
+        _pacingBadgeHtml(status) {
+            if (!status) return "";
+            return `<span class="badge ${status.tier}" title="Day ${status.dayIndex} of 14 — expected ${status.expectedPct.toFixed(1)}% complete, actual ${status.actualPct.toFixed(1)}%">${status.label}</span>`;
+        }
 
         _anchorYear(isoDates) {
             const counts = {};
@@ -919,6 +976,13 @@
             // see BUILD_PLAN doc).
             const total2027 = status.totalSetUp;
             this._renderTimeline(root.getElementById("timelineChart"), daily, total2027);
+
+            // Pacing badge — added 2026-09-18, shown both in the top
+            // header and beside the Timeline title (Blair's call).
+            const pacing = this._pacingStatus(daily, total2027);
+            const pacingHtml = this._pacingBadgeHtml(pacing);
+            root.getElementById("pacingBadgeHeader").innerHTML = pacingHtml;
+            root.getElementById("pacingBadgeTimeline").innerHTML = pacingHtml;
 
             const titleEl = root.getElementById("timelineTitle");
             if (daily.length) {
