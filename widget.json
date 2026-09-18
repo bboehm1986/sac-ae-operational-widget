@@ -1,7 +1,7 @@
 {
     "id": "com.porticobenefits.aeoperations",
     "name": "AE Employer Election Operational Dashboard",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "vendor": "Portico Benefits",
     "license": "",
     "eula": "",
@@ -13,7 +13,7 @@
             "kind": "main",
             "tag": "com-porticobenefits-aeoperations",
             "url": "https://bboehm1986.github.io/sac-ae-operational-widget/main.js",
-            "integrity": "sha384-vw4O6DKPSlwc/VksMG6omOt02jM+FEIwUS6rOz7fwbJrC8buqtAHT5gEv2Qjx8py"
+            "integrity": "sha384-KyTGc3pT6RdHTI/6b/kODbgERNY3MAlJigGuAYukuvuJOI8ecpWnN3Gm9712hgiJ"
         }
     ],
     "properties": {

@@ -280,6 +280,7 @@
             .badge.success { color: var(--success); border-color: rgba(20,151,111,0.35); background: var(--success-bg); }
             .badge.warning { color: var(--warning); border-color: rgba(165,112,12,0.35); background: var(--warning-bg); }
             .badge.danger { color: var(--danger); border-color: rgba(201,75,75,0.35); background: var(--danger-bg); }
+            .badge.pending { color: var(--text-soft); border-color: rgba(23,26,35,0.12); background: var(--surface-2); }
             .asof { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
 
             .section-title { font-size: 11.5px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.05em; margin: 22px 0 8px; }
@@ -534,15 +535,19 @@
         // of which year the bound data's Timeline rows anchor to. Being
         // ahead of pace never downgrades the badge, only falling behind
         // does (Blair's call, 2026-09-18): a tracker shouldn't turn red
-        // just because enrollment finished early. Returns null before the
-        // window opens (nothing to compare yet); after it closes, returns
-        // a final read against day 14's expectation.
+        // just because enrollment finished early. Returns a neutral
+        // "pending" status before the window opens (nothing to compare
+        // yet, added 2026-09-18 per Blair -- an empty badge read as
+        // broken); after the window closes, returns a final read against
+        // day 14's expectation.
         _pacingStatus(daily, total2027) {
             const now = new Date();
             const month = now.getMonth(); // 0-indexed; October = 9
             const day = now.getDate();
             let dayIndex;
-            if (month < 9 || (month === 9 && day < this.constructor.AE_WINDOW_START_DAY)) return null;
+            if (month < 9 || (month === 9 && day < this.constructor.AE_WINDOW_START_DAY)) {
+                return { tier: "pending", label: "Pending AE", expectedPct: null, actualPct: null, dayIndex: null };
+            }
             if (month > 9 || (month === 9 && day > this.constructor.AE_WINDOW_LENGTH_DAYS)) {
                 dayIndex = this.constructor.AE_WINDOW_LENGTH_DAYS;
             } else {
@@ -564,7 +569,10 @@
 
         _pacingBadgeHtml(status) {
             if (!status) return "";
-            return `<span class="badge ${status.tier}" title="Day ${status.dayIndex} of 14 — expected ${status.expectedPct.toFixed(1)}% complete, actual ${status.actualPct.toFixed(1)}%">${status.label}</span>`;
+            const title = status.dayIndex
+                ? `Day ${status.dayIndex} of 14 — expected ${status.expectedPct.toFixed(1)}% complete, actual ${status.actualPct.toFixed(1)}%`
+                : "AE window opens 10/1";
+            return `<span class="badge ${status.tier}" title="${title}">${status.label}</span>`;
         }
 
         _anchorYear(isoDates) {
