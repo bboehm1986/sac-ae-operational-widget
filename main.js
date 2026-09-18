@@ -1005,7 +1005,7 @@
 
             const tracker = `
                 <div class="cum-tracker">
-                    <div class="cum-tracker-title">Cumulative Tally Tracker</div>
+                    <div class="cum-tracker-title">Daily Completion Tracker</div>
                     <div class="cum-tracker-row">
                         <div class="cum-stat">
                             <div class="cum-stat-label">Count Completed 2027</div>
