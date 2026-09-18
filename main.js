@@ -893,12 +893,14 @@
             [["HSA Annual YoY", "Annual"], ["HSA One-Time YoY", "One-Time"]].forEach(([key, label]) => {
                 const y2026 = (status.byHsaYoy[key] && status.byHsaYoy[key]["2026"]) || { count: 0, amount: 0 };
                 const y2027 = (status.byHsaYoy[key] && status.byHsaYoy[key]["2027"]) || { count: 0, amount: 0 };
-                const amountDelta = y2027.amount - y2026.amount;
+                const avg2026 = y2026.count > 0 ? y2026.amount / y2026.count : 0;
+                const avg2027 = y2027.count > 0 ? y2027.amount / y2027.count : 0;
+                const avgDelta = avg2027 - avg2026;
                 const countDelta = y2027.count - y2026.count;
                 hsaYoyEntries.push({
-                    name: `${label} — $ Elected`,
-                    value: `${amountDelta >= 0 ? "+" : ""}${this._money(amountDelta)}`,
-                    sub: `${this._money(y2026.amount)} (2026) → ${this._money(y2027.amount)} (2027)`,
+                    name: `${label} — Avg $ Elected`,
+                    value: `${avgDelta >= 0 ? "+" : ""}${this._money(avgDelta)}`,
+                    sub: `${this._money(avg2026)} (2026) → ${this._money(avg2027)} (2027)`,
                 });
                 hsaYoyEntries.push({
                     name: `${label} — Employers`,
