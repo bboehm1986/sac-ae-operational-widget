@@ -208,10 +208,12 @@
         row(["Abandoned", "", "Under 3", "", ""], [2]),
         row(["Success", "", "Unknown", "", ""], [2]),
         row(["Not Started", "", "Unknown", "", ""], [1]),
-        // "Eligible Count" — not rendered by this widget (no YoY panel),
-        // included here only to confirm the shared parser safely ignores
-        // it rather than misrouting it somewhere wrong.
+        // "Eligible Count"/"Covered Count" — neither is rendered by this
+        // widget (no YoY panel), included here only to confirm the shared
+        // parser safely ignores both rather than misrouting them
+        // somewhere wrong (see the 2026-09-14 bug this guard prevents).
         row(["", "", "Eligible Count", "", "2027"], [null, 1310]),
+        row(["", "", "Covered Count", "", "2027"], [null, 1145]),
     ] };
 
     const template = document.createElement("template");
@@ -648,7 +650,7 @@
                     return;
                 }
 
-                if (subType === "Eligible Count") return; // YoY-only, not rendered by this widget
+                if (subType === "Eligible Count" || subType === "Covered Count") return; // YoY-only, not rendered by this widget — "Covered Count" added 2026-09-23, same reasoning
 
                 // Status x Eligible Employee Band — new 2026-09-14. The only
                 // row-kind where Status AND Election_Category are both

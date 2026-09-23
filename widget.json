@@ -1,7 +1,7 @@
 {
     "id": "com.porticobenefits.aeoperations",
     "name": "AE Employer Election Operational Dashboard",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "vendor": "Portico Benefits",
     "license": "",
     "eula": "",
@@ -13,7 +13,7 @@
             "kind": "main",
             "tag": "com-porticobenefits-aeoperations",
             "url": "https://bboehm1986.github.io/sac-ae-operational-widget/main.js",
-            "integrity": "sha384-5+sg4ltp9/boGH6nRPVCnzY9qNfZ2MluozbAyb4gZAI75Kl3Q/LkqVQB38q2sqW6"
+            "integrity": "sha384-RnrIwZKPbTirm7UgJNt0rtoettBRhoCaTdcTo62P9PQQvNthjT1OT1hhdtZM28Jz"
         }
     ],
     "properties": {
@@ -35,7 +35,7 @@
             "feeds": [
                 {
                     "id": "dimensions",
-                    "description": "Status / Synod-Region / Election Sub-Type / Date / Year — same shape as AE Snap Report's employerStatus binding (both widgets share AM_EMPLOYER_ENROLLMENT_SUMMARY); Election Sub-Type also carries: the Stalled .../Days and Recently Completed row-kinds (added 2026-09-13, Stalled rescaled 2026-09-16); the Eligible Employee Band row-kind (20+ / 10-19 / 3-9 / Under 3 / Unknown, added 2026-09-14), the only row-kind where Status and Election Sub-Type are both populated together; the 3 attempt-count buckets (Needed 1/2/3+ Attempts, replacing the old single Multiple Attempts stat, 2026-09-18); the 5 Election_Status values (Open/Completed EL/Completed OTP/Default/Default Override, 2026-09-18), which now also carry Synod-Region populated (unlike every other multiplexed row-kind) for the Synod crosstab; and 'HSA Annual YoY'/'HSA One-Time YoY' (Year-tagged, EmployeeCount repurposed to carry SUM($), 2026-09-18). Date rows carry Year too (2026 or 2027) — Timeline renders as a cumulative line chart plus a daily-volume bar chart (2026-09-18), scoped to Completed EL/Completed OTP only.",
+                    "description": "Status / Synod-Region / Election Sub-Type / Date / Year — same shape as AE Snap Report's employerStatus binding (both widgets share AM_EMPLOYER_ENROLLMENT_SUMMARY); Election Sub-Type also carries: the Stalled .../Days and Recently Completed row-kinds (added 2026-09-13, Stalled rescaled 2026-09-16); the Eligible Employee Band row-kind (20+ / 10-19 / 3-9 / Under 3 / Unknown, added 2026-09-14), the only row-kind where Status and Election Sub-Type are both populated together; the 3 attempt-count buckets (Needed 1/2/3+ Attempts, replacing the old single Multiple Attempts stat, 2026-09-18); the 5 Election_Status values (Open/Completed EL/Completed OTP/Default/Default Override, 2026-09-18), which now also carry Synod-Region populated (unlike every other multiplexed row-kind) for the Synod crosstab; 'HSA Annual YoY'/'HSA One-Time YoY' (Year-tagged, EmployeeCount repurposed to carry SUM($), 2026-09-18); and 'Eligible Count'/'Covered Count' (Year-tagged, EmployeeCount repurposed to carry SUM(EligibleCount)/SUM(HealthCoveredCount)) — neither rendered by this widget (no YoY panel here), both explicitly skipped by a guard rather than left to fall through unhandled, same reasoning as the 2026-09-14 bug fix elsewhere in this doc. Date rows carry Year too (2026 or 2027) — Timeline renders as a cumulative line chart plus a daily-volume bar chart (2026-09-18), scoped to Completed EL/Completed OTP only.",
                     "type": "dimension"
                 },
                 {
