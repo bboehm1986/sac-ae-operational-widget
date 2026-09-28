@@ -358,6 +358,10 @@
             .chart-legend-item { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text-soft); }
             .chart-legend-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--info); opacity: 0.45; }
             .chart-legend-swatch.line { width: 14px; height: 2px; border-radius: 1px; background: var(--accent); opacity: 1; }
+            .chart-legend-swatch.dashed { width: 14px; height: 0; border-radius: 0; background: none; opacity: 1; border-top: 2px dashed var(--text-soft); }
+            .chart-bar-label { font-size: 9px; fill: var(--text-soft); font-variant-numeric: tabular-nums; }
+            .cum-stat-value.success { color: var(--success); }
+            .cum-stat-value.danger { color: var(--danger); }
         </style>
         <div class="dashboard">
             <div class="topbar">
@@ -1019,7 +1023,13 @@
         // the line (cumulative) scales independently against its own max
         // on a right axis, since cumulative totals run far higher than any
         // single day's count — a shared scale would flatten the bars.
-        _svgComboChart(daily) {
+        // Expected-pace overlay added 2026-09-25 (same change as
+        // sac-ae-snap-report-widget, mirrored here 2026-09-28 per Blair) —
+        // puts the AE_EXPECTED_PACING curve on the chart itself as a dashed
+        // line, scaled to counts (curve % * total2027) so it sits on the
+        // same right-axis scale as the actual cumulative line. `total2027`
+        // is optional — omitting it just skips the overlay.
+        _svgComboChart(daily, total2027) {
             const width = 700, height = 170, padL = 34, padR = 34, padT = 14, padB = 22;
             const innerW = width - padL - padR;
             const innerH = height - padT - padB;
@@ -1027,7 +1037,10 @@
             const barMax = Math.max(1, ...daily.map((d) => d.count));
             let cum = 0;
             const cumPoints = daily.map((d) => (cum += d.count));
-            const cumMax = Math.max(1, ...cumPoints);
+            const expectedPoints = total2027
+                ? this.constructor.AE_EXPECTED_PACING.slice(0, n).map((pct) => (pct / 100) * total2027)
+                : null;
+            const cumMax = Math.max(1, ...cumPoints, ...(expectedPoints || []));
             const gap = 6;
             const barW = (innerW - gap * (n - 1)) / n;
 
@@ -1035,7 +1048,9 @@
                 const x = padL + i * (barW + gap);
                 const h = (d.count / barMax) * innerH;
                 const y = padT + innerH - h;
-                return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="var(--info)" opacity="0.45"><title>Day ${i + 1}: ${d.count.toLocaleString()} completions</title></rect>`;
+                const labelY = Math.max(padT + 8, y - 4);
+                return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="var(--info)" opacity="0.45"><title>Day ${i + 1}: ${d.count.toLocaleString()} completions</title></rect>
+                <text x="${(x + barW / 2).toFixed(1)}" y="${labelY.toFixed(1)}" class="chart-bar-label" text-anchor="middle">${d.count.toLocaleString()}</text>`;
             }).join("");
 
             const stepX = n > 1 ? innerW / (n - 1) : 0;
@@ -1044,6 +1059,12 @@
             const dots = coords.map(([x, y], i) =>
                 `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--accent)"><title>Day ${i + 1}: ${cumPoints[i].toLocaleString()} cumulative</title></circle>`
             ).join("");
+
+            let expectedPath = "";
+            if (expectedPoints) {
+                const expectedCoords = expectedPoints.map((v, i) => [padL + i * stepX, padT + innerH - (v / cumMax) * innerH]);
+                expectedPath = expectedCoords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+            }
 
             const dayLabels = daily.map((d, i) => {
                 const x = padL + i * (barW + gap) + barW / 2;
@@ -1057,6 +1078,7 @@
 
             return `<svg viewBox="0 0 ${width} ${height}" class="chart-svg" role="img" aria-label="Daily and cumulative completions by AE day">
                 ${bars}
+                ${expectedPath ? `<path d="${expectedPath}" fill="none" stroke="var(--text-soft)" stroke-width="2" stroke-dasharray="5,4"></path>` : ""}
                 <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2"></path>
                 ${dots}${dayLabels}${axisLabels}
             </svg>`;
@@ -1077,6 +1099,24 @@
             daily.forEach((d) => { cum2027 += d.count; });
             const cumPct2027 = total2027 ? (cum2027 / total2027) * 100 : 0;
 
+            // vs. Expected Pace stat — added 2026-09-25 in sac-ae-snap-report-widget,
+            // mirrored here 2026-09-28. Only shown once the AE window has
+            // actually opened (pacing.dayIndex is null in the "Pending AE"
+            // state) — same reasoning as the badge itself.
+            let vsExpectedHtml = "";
+            if (pacing && pacing.dayIndex && total2027) {
+                const expectedCount = (this.constructor.AE_EXPECTED_PACING[pacing.dayIndex - 1] / 100) * total2027;
+                const delta = cum2027 - expectedCount;
+                const deltaPct = expectedCount ? (delta / expectedCount) * 100 : 0;
+                const tier = delta < 0 ? "danger" : "success";
+                const sign = delta > 0 ? "+" : "";
+                vsExpectedHtml = `
+                    <div class="cum-stat">
+                        <div class="cum-stat-label">vs. Expected Pace (Day ${pacing.dayIndex})</div>
+                        <div class="cum-stat-value ${tier}">${sign}${Math.round(delta).toLocaleString()} (${sign}${deltaPct.toFixed(0)}%)</div>
+                    </div>`;
+            }
+
             const tracker = `
                 <div class="cum-tracker">
                     <div class="cum-tracker-header">
@@ -1092,12 +1132,14 @@
                             <div class="cum-stat-label">% Completed 2027</div>
                             <div class="cum-stat-value">${this._formatPct(cumPct2027)}</div>
                         </div>
+                        ${vsExpectedHtml}
                     </div>
                     <div class="chart-legend">
                         <div class="chart-legend-item"><span class="chart-legend-swatch bar"></span>Daily completions</div>
-                        <div class="chart-legend-item"><span class="chart-legend-swatch line"></span>Cumulative</div>
+                        <div class="chart-legend-item"><span class="chart-legend-swatch line"></span>Cumulative (actual)</div>
+                        <div class="chart-legend-item"><span class="chart-legend-swatch dashed"></span>Expected pace</div>
                     </div>
-                    <div class="chart-wrap">${this._svgComboChart(daily)}</div>
+                    <div class="chart-wrap">${this._svgComboChart(daily, total2027)}</div>
                 </div>`;
 
             container.innerHTML = tracker;
