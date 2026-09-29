@@ -86,7 +86,12 @@
 
     const COMPLETED_STATUSES = ["Success"]; // still used by the Eligible Employee Band panel's per-band completion rate — unaffected by the Election_Status changes below
     const OPEN_STATUSES = ["Abandoned", "Not Started", "In Progress", "Needs Follow-up"];
-    const STALLED_BUCKET_ORDER = ["Stalled 0-3 Days", "Stalled 4-7 Days", "Stalled 8+ Days"];
+    // "Not Started" added 2026-09-29 (BR-12) — a NULL Last_Attempted_On used
+    // to silently fall into "Stalled 8+ Days" (3,986 of 3,991 non-Success
+    // employers in QA), which conflated "never began" with "genuinely
+    // stalled after starting". Listed first since it's the largest and most
+    // actionable group for the operations team.
+    const STALLED_BUCKET_ORDER = ["Not Started", "Stalled 0-3 Days", "Stalled 4-7 Days", "Stalled 8+ Days"];
     // Election_Status — added 2026-09-18, replacing the old Enrollment_
     // Status-scoped "Non-Completed — By Status" panel and its Synod
     // crosstab (see BUILD_PLAN_VWEMPLOYERSAVES.md, "Timeline redesign").
@@ -186,6 +191,8 @@
         row(["", "", "Needed 1 Attempt", "", ""], [6]),
         row(["", "", "Needed 2 Attempts", "", ""], [4]),
         row(["", "", "Needed 3+ Attempts", "", ""], [2]),
+        // "Not Started" added 2026-09-29 (BR-12).
+        row(["", "", "Not Started", "", ""], [31]),
         row(["", "", "Stalled 0-3 Days", "", ""], [12]),
         row(["", "", "Stalled 4-7 Days", "", ""], [7]),
         row(["", "", "Stalled 8+ Days", "", ""], [5]),
@@ -718,7 +725,7 @@
                     return;
                 }
 
-                if (subType && subType.indexOf("Stalled ") === 0) {
+                if (subType === "Not Started" || (subType && subType.indexOf("Stalled ") === 0)) {
                     byStalledBucket[subType] = (byStalledBucket[subType] || 0) + employerCount;
                     return;
                 }
