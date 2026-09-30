@@ -493,6 +493,10 @@
 
         _formatPct(pct) {
             if (pct > 0 && pct < 1) return pct.toFixed(1) + "%";
+            // Mirror of the near-zero case above, added 2026-09-30: a value
+            // like 99.9156% was rounding up to a misleading "100%" even
+            // though it isn't literally complete.
+            if (pct > 99 && pct < 100) return pct.toFixed(1) + "%";
             return Math.round(pct) + "%";
         }
 
