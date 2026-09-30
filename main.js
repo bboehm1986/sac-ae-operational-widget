@@ -1084,7 +1084,7 @@
             const axisLabels = `
                 <text x="${(padL - 8).toFixed(1)}" y="${(padT + 4).toFixed(1)}" class="chart-axis-label" text-anchor="end">${barMax.toLocaleString()}</text>
                 <text x="${(padL - 8).toFixed(1)}" y="${(padT + innerH).toFixed(1)}" class="chart-axis-label" text-anchor="end">0</text>
-                <text x="${(width - padR + 8).toFixed(1)}" y="${(padT + 4).toFixed(1)}" class="chart-axis-label" text-anchor="start">${cumMax.toLocaleString()}</text>
+                <text x="${(width - padR + 8).toFixed(1)}" y="${(padT + 4).toFixed(1)}" class="chart-axis-label" text-anchor="start">${Math.round(cumMax).toLocaleString()}</text>
                 <text x="${(width - padR + 8).toFixed(1)}" y="${(padT + innerH).toFixed(1)}" class="chart-axis-label" text-anchor="start">0</text>`;
 
             return `<svg viewBox="0 0 ${width} ${height}" class="chart-svg" role="img" aria-label="Daily and cumulative completions by AE day">
