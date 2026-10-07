@@ -368,7 +368,9 @@
             .chart-legend-swatch.dashed { width: 14px; height: 0; border-radius: 0; background: none; opacity: 1; border-top: 2px dashed var(--text-soft); }
             .chart-bar-label { font-size: 9px; fill: var(--text-soft); font-variant-numeric: tabular-nums; }
             .cum-stat-value.success { color: var(--success); }
+            .cum-stat-value.warning { color: var(--warning); }
             .cum-stat-value.danger { color: var(--danger); }
+            .cum-stat-sub { font-size: 10px; color: var(--text-soft); white-space: nowrap; margin-top: 1px; }
         </style>
         <div class="dashboard">
             <div class="topbar">
@@ -1115,15 +1117,19 @@
             // state) — same reasoning as the badge itself.
             let vsExpectedHtml = "";
             if (pacing && pacing.dayIndex && total2027) {
-                const expectedCount = (this.constructor.AE_EXPECTED_PACING[pacing.dayIndex - 1] / 100) * total2027;
-                const delta = cum2027 - expectedCount;
-                const deltaPct = expectedCount ? (delta / expectedCount) * 100 : 0;
-                const tier = delta < 0 ? "danger" : "success";
-                const sign = delta > 0 ? "+" : "";
+                // Changed 2026-10-07 per Patrick/Paul: was a count delta with
+                // "% of expected count" in parentheses (-620 (-40%)), which
+                // readers took as a gap on the completion scale. Now a
+                // percentage-point delta between the two completion rates,
+                // read straight off the same actualPct/expectedPct the
+                // pacing badge uses, so the two can't disagree.
+                const deltaPts = Math.round((pacing.actualPct - pacing.expectedPct) * 10) / 10;
+                const sign = deltaPts > 0 ? "+" : "";
                 vsExpectedHtml = `
                     <div class="cum-stat">
                         <div class="cum-stat-label">vs. Expected Pace (Day ${pacing.dayIndex})</div>
-                        <div class="cum-stat-value ${tier}">${sign}${Math.round(delta).toLocaleString()} (${sign}${deltaPct.toFixed(0)}%)</div>
+                        <div class="cum-stat-value ${pacing.tier}">${sign}${deltaPts.toFixed(1)} pts</div>
+                        <div class="cum-stat-sub">${pacing.actualPct.toFixed(1)}% actual vs. ${pacing.expectedPct.toFixed(1)}% expected</div>
                     </div>`;
             }
 
