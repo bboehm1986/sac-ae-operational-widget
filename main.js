@@ -370,6 +370,7 @@
             .cum-stat-value.success { color: var(--success); }
             .cum-stat-value.warning { color: var(--warning); }
             .cum-stat-value.danger { color: var(--danger); }
+            .cum-stat-count { font-size: 14px; font-weight: 600; }
             .cum-stat-sub { font-size: 10px; color: var(--text-soft); white-space: nowrap; margin-top: 1px; }
         </style>
         <div class="dashboard">
@@ -557,7 +558,7 @@
         // yet, added 2026-09-18 per Blair -- an empty badge read as
         // broken); after the window closes, returns a final read against
         // day 14's expectation.
-        _pacingStatus(daily, total2027) {
+        _pacingStatus(daily, total2027, carryIn = 0) {
             const now = new Date();
             const month = now.getMonth(); // 0-indexed; October = 9
             const day = now.getDate();
@@ -572,7 +573,7 @@
             }
 
             const expectedPct = this.constructor.AE_EXPECTED_PACING[dayIndex - 1];
-            let cum = 0;
+            let cum = carryIn; // completions dated before the window opened count toward the total
             daily.forEach((d) => { cum += d.count; });
             const actualPct = total2027 ? (cum / total2027) * 100 : 0;
             const diff = actualPct - expectedPct; // negative = behind pace
@@ -1007,9 +1008,18 @@
             // of its own title, at a larger size — Blair wanted it more
             // prominent than a small pill next to a section title. Top
             // header keeps the small version.
-            const pacing = this._pacingStatus(daily, total2027);
+            // Carry-in, added 2026-10-08 (Andrew Mogendorff caught the tracker
+            // showing 998 against 1,002 everywhere else): the tracker only
+            // counts completions dated inside the fixed 10/1-10/14 window, so
+            // completions dated before it opened (4 on 10/8, all late Sep)
+            // were dropped. Their difference from the tiles' completed total
+            // is carried in as the cumulative line's starting point, so the
+            // tracker, pacing badge and tiles all agree. Bars stay in-window.
+            const dailySum = daily.reduce((s, d) => s + d.count, 0);
+            const carryIn = Math.max(0, ((status.byElectionStatus["Completed EL"] || 0) + (status.byElectionStatus["Completed OTP"] || 0)) - dailySum);
+            const pacing = this._pacingStatus(daily, total2027, carryIn);
             root.getElementById("pacingBadgeHeader").innerHTML = this._pacingBadgeHtml(pacing);
-            this._renderTimeline(root.getElementById("timelineChart"), daily, total2027, pacing);
+            this._renderTimeline(root.getElementById("timelineChart"), daily, total2027, pacing, carryIn);
 
             const titleEl = root.getElementById("timelineTitle");
             if (daily.length) {
@@ -1042,13 +1052,13 @@
         // line, scaled to counts (curve % * total2027) so it sits on the
         // same right-axis scale as the actual cumulative line. `total2027`
         // is optional — omitting it just skips the overlay.
-        _svgComboChart(daily, total2027) {
+        _svgComboChart(daily, total2027, carryIn = 0) {
             const width = 700, height = 170, padL = 34, padR = 34, padT = 14, padB = 22;
             const innerW = width - padL - padR;
             const innerH = height - padT - padB;
             const n = daily.length;
             const barMax = Math.max(1, ...daily.map((d) => d.count));
-            let cum = 0;
+            let cum = carryIn;
             const cumPoints = daily.map((d) => (cum += d.count));
             const expectedPoints = total2027
                 ? this.constructor.AE_EXPECTED_PACING.slice(0, n).map((pct) => (pct / 100) * total2027)
@@ -1101,13 +1111,13 @@
         // combined into a single chart 2026-09-18, replacing the two
         // stacked charts from earlier the same day. Kept: the fixed
         // 10/1-10/14 window design, and Count/% Completed 2027.
-        _renderTimeline(container, daily, total2027, pacing) {
+        _renderTimeline(container, daily, total2027, pacing, carryIn = 0) {
             if (!daily.length) {
                 container.innerHTML = `<div class="empty-row">No timeline data bound yet</div>`;
                 return;
             }
 
-            let cum2027 = 0;
+            let cum2027 = carryIn;
             daily.forEach((d) => { cum2027 += d.count; });
             const cumPct2027 = total2027 ? (cum2027 / total2027) * 100 : 0;
 
@@ -1125,10 +1135,15 @@
                 // pacing badge uses, so the two can't disagree.
                 const deltaPts = Math.round((pacing.actualPct - pacing.expectedPct) * 10) / 10;
                 const sign = deltaPts > 0 ? "+" : "";
+                // Employer count behind/ahead of the expected curve, shown
+                // beside the points (restored 2026-10-08 at Blair's request,
+                // same actual-minus-expected-count math as the original stat).
+                const deltaCount = Math.round(cum2027 - (pacing.expectedPct / 100) * total2027);
+                const countSign = deltaCount > 0 ? "+" : "";
                 vsExpectedHtml = `
                     <div class="cum-stat">
                         <div class="cum-stat-label">vs. Expected Pace (Day ${pacing.dayIndex})</div>
-                        <div class="cum-stat-value ${pacing.tier}">${sign}${deltaPts.toFixed(1)} pts</div>
+                        <div class="cum-stat-value ${pacing.tier}">${sign}${deltaPts.toFixed(1)} pts <span class="cum-stat-count">(${countSign}${deltaCount.toLocaleString()})</span></div>
                         <div class="cum-stat-sub">${pacing.actualPct.toFixed(1)}% actual vs. ${pacing.expectedPct.toFixed(1)}% expected</div>
                     </div>`;
             }
@@ -1155,7 +1170,7 @@
                         <div class="chart-legend-item"><span class="chart-legend-swatch line"></span>Cumulative (actual)</div>
                         <div class="chart-legend-item"><span class="chart-legend-swatch dashed"></span>Expected pace</div>
                     </div>
-                    <div class="chart-wrap">${this._svgComboChart(daily, total2027)}</div>
+                    <div class="chart-wrap">${this._svgComboChart(daily, total2027, carryIn)}</div>
                 </div>`;
 
             container.innerHTML = tracker;
